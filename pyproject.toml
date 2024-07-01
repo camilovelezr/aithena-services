@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "aithena-services"
+version = "0.1.0"
+description = ""
+authors = ["Camilo Velez <camilo.velez@axleinfo.com>, Antoine Gerardin <antoine.gerardin@nextonicsolutions.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.7.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
