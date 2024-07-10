@@ -1,7 +1,6 @@
 """Message types for Aithena services."""
 
-# from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, overload
 
 from pydantic import BaseModel, Field, RootModel
 from typing_extensions import Annotated, Literal
@@ -86,6 +85,26 @@ class Message(RootModel):
 
     root: MessageRoot
 
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(self, role: str): ...
+        @overload
+        def __init__(self, role: str, content: Union[str, list[ContentPart]]): ...
+        @overload
+        def __init__(
+            self, role: str, content: Union[str, list[ContentPart]], name: str
+        ): ...
+
+        def __init__(
+            self,
+            role: str,
+            content: Optional[Union[str, list[ContentPart]]] = None,
+            name: Optional[str] = None,
+        ):  # for mypy compatibility
+            root_ = {"role": role, "content": content, "name": name}
+            super().__init__(**root_)
+
     def __getattr__(self, name):
         try:
             return getattr(self.root, name)
@@ -107,6 +126,11 @@ class Message(RootModel):
 
     def __str__(self):
         return f"Message({self.root})"
+
+    @overload
+    def convert_prompt(self, model: Literal["claude"]) -> "Message": ...
+    @overload
+    def convert_prompt(self, model: Literal["gemini"]) -> str: ...
 
     def convert_prompt(  # pylint: disable=R1710
         self, model: Literal["claude", "gemini"]
