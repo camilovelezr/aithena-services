@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, List, Optional, Union, get_type_hints, overload
+from typing import Any, Optional, Union, get_type_hints, overload
 
 import requests  # type: ignore
 from anthropic import Anthropic as AnthropicClient
@@ -17,16 +17,37 @@ from typing_extensions import Literal, Self
 from .message import Message
 
 
-@dataclass
+def _prompt_to_message(value: Union[str, Message]) -> Message:
+    """Convert prompt to SystemMessage if str."""
+    if isinstance(value, str):
+        return Message(role="system", content=value)
+    if isinstance(value, Message):
+        return value
+    raise ValueError("prompt must be a string or a Message object")
+
+
+@dataclass()
 class BaseLLM:
     """Base LLM class."""
 
-    name: str
+    name: str = Field(..., description="The name of the LLM model to use.")
     platform: Literal["OpenAI", "Anthropic", "Ollama"] = Field(init=False, frozen=True)
     prompt: Optional[Message] = None
-    messages: List[Message] = Field(default_factory=list)
+    messages: list[Message] = Field(default_factory=list)
     client: Any = None
     stream: bool = False
+
+    def __setattr__(self, name: str, value: Any):
+        """Set attribute."""
+        if name == "prompt":
+            value = _prompt_to_message(value)
+        super().__setattr__(name, value)
+
+    @field_validator("prompt", mode="before")
+    @classmethod
+    def check_prompt(cls, value):
+        """Validate prompt."""
+        return _prompt_to_message(value)
 
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
@@ -101,26 +122,24 @@ class Anthropic(BaseLLM):
     _stream: Any = None
 
     @staticmethod
-    def list_models() -> List[str]:
+    def list_models() -> list[str]:
         """Wrapper around `ANTHROPIC_MODELS`: list available Anthropic models."""
         return list(ANTHROPIC_MODELS.__args__)
 
-    @field_validator("prompt", mode="before")
-    @classmethod
-    def check_prompt(cls, value):
-        """Validate prompt."""
-        if isinstance(value, str):
-            return Message(role="user", content=f"<instructions>{value}</instructions>")
-        if isinstance(value, Message):
-            return value.convert_prompt("claude")
-        raise ValueError("prompt must be a string or a SystemMessage object")
+    @property
+    def _chat_messages(self):
+        msgs_ = [msg.as_json(exclude="name") for msg in self.messages]
+        return msgs_
+
+    @property
+    def _prompt(self):
+        return self.prompt.content
 
     @model_validator(mode="after")
     def validate_messages(self) -> Self:
         """Validate message list."""
         for n, message in enumerate(self.messages):
             if n == 0 and message.role == "system":
-                self.prompt = message.convert_prompt("claude")
                 self.messages = self.messages[1:]
         return self
 
@@ -137,8 +156,8 @@ class Anthropic(BaseLLM):
             response = self.client.messages.create(
                 model=self.name,
                 max_tokens=self.max_tokens,
-                system=self.prompt,
-                messages=self.messages,
+                system=self._prompt,
+                messages=self._chat_messages,
             )
             response_message = Message(
                 role="assistant", content=response.content[0].text
@@ -150,8 +169,8 @@ class Anthropic(BaseLLM):
             self.client.messages.create(
                 model=self.name,
                 max_tokens=self.max_tokens,
-                system=self.prompt,
-                messages=self.messages,
+                system=self._prompt,
+                messages=self._chat_messages,
                 stream=True,
             ),
             self,
@@ -225,20 +244,9 @@ class OpenAI(BaseLLM):
     _stream: Any = None
 
     @staticmethod
-    def list_models() -> List[str]:
+    def list_models() -> list[str]:
         """Wrapper around `list_openai_models`: list available OpenAI chat models."""
         return list_openai_models()
-
-    @field_validator("prompt", mode="before")
-    @classmethod
-    def check_prompt(cls, value):
-        """Validate prompt."""
-        if isinstance(value, str):
-            return Message(role="system", content=value)
-        if isinstance(value, Message):
-            return value
-        else:
-            raise ValueError("prompt must be a string or a Message object")
 
     @model_validator(mode="after")
     def validate_messages(self) -> Self:
@@ -257,9 +265,10 @@ class OpenAI(BaseLLM):
 
     @property
     def _chat_messages(self):
+        msgs_ = [msg.as_json(exclude="name") for msg in self.messages]
         if self.prompt is None:
-            return self.messages
-        return [self.prompt, *self.messages]
+            return msgs_
+        return [self.prompt, *msgs_]
 
     @overload
     def _send_internal(self, stream: Literal[True]) -> InternalOpenAIStream: ...
@@ -329,7 +338,7 @@ if not OLLAMA_URL.startswith("http"):
     raise ValueError("OLLAMA_URL must start with 'http'")
 
 
-def list_ollama_models(url: str = OLLAMA_URL) -> List[str]:
+def list_ollama_models(url: str = OLLAMA_URL) -> list[str]:
     """List available Ollama models."""
     names_ = [
         x["name"] for x in requests.get(url + "/tags", timeout=10).json()["models"]
@@ -352,20 +361,9 @@ class Ollama(BaseLLM):
     _stream: Any = None
 
     @staticmethod
-    def list_models() -> List[str]:
+    def list_models() -> list[str]:
         """List available Ollama models."""
         return list_ollama_models()
-
-    @field_validator("prompt", mode="before")
-    @classmethod
-    def check_prompt(cls, value):
-        """Validate prompt."""
-        if isinstance(value, str):
-            return Message(role="system", content=value)
-        if isinstance(value, Message):
-            return value
-        else:
-            raise ValueError("prompt must be a string or a Message object")
 
     @model_validator(mode="after")
     def validate_messages(self):

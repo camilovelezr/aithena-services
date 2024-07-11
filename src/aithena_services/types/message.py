@@ -49,7 +49,7 @@ ContentPart = Annotated[
 class UserMessage(BaseMessage):
     """User message."""
 
-    role: Literal["user"] = "user"
+    role: Literal["user"] = Field(default="user", frozen=True)
     name: Optional[str] = Field(None, repr=False)
     content: Union[str, list[ContentPart]]
 
@@ -57,22 +57,26 @@ class UserMessage(BaseMessage):
 class SystemMessage(BaseMessage):
     """System message."""
 
-    role: Literal["system"] = "system"
+    role: Literal["system"] = Field(default="system", frozen=True)
     content: str  # not optional
     name: Optional[str] = Field(None, repr=False)
+
+    # NOTE: will turn to using prompt as kwarg for Anthropic
+    # (and this is the behavior of Gemini by default) so
+    # no need for the convert_prompt method
 
 
 class AssistantMessage(BaseMessage):
     """Assistant message."""
 
-    role: Literal["assistant"] = "assistant"
+    role: Literal["assistant"] = Field(default="assistant", frozen=True)
     name: Optional[str] = Field(None, repr=False)
 
 
 class ToolMessage(BaseMessage):
     """Tool message."""
 
-    role: Literal["tool"] = "tool"
+    role: Literal["tool"] = Field(default="tool", frozen=True)
 
 
 MessageRoot = Annotated[
@@ -113,39 +117,44 @@ class Message(RootModel):
                 f"Message has no attribute {name}"
             )
 
-    def as_dict(self):
-        """Wrapper for `self.model_dump(mode="python")`"""
-        return self.model_dump(mode="python", exclude_unset=True, exclude_none=True)
+    def __setattr__(self, name, value):
+        if name == "root":
+            super().__setattr__(name, value)
+        else:
+            setattr(self.root, name, value)
 
-    def as_json(self):
-        """Wrapper for `self.model_dump(mode="json")`"""
-        return self.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+    def as_dict(self, **kwargs):
+        """Wrapper for `self.model_dump(mode="python")`
+        with `exclude_unset=True` and `exclude_none=True`.
+
+        Additional keyword arguments are passed to `self.model_dump`.
+        If these additional arguments include `exclude_unset` or `exclude_none`,
+        these values will be ignored.
+        """
+        for key in ["exclude_unset", "exclude_none"]:
+            if key in kwargs:
+                kwargs.pop(key)
+        return self.model_dump(
+            mode="python", exclude_unset=True, exclude_none=True, **kwargs
+        )
+
+    def as_json(self, **kwargs):
+        """Wrapper for `self.model_dump(mode="json")`
+        with `exclude_unset=True` and `exclude_none=True`.
+
+        Additional keyword arguments are passed to `self.model_dump`.
+        If these additional arguments include `exclude_unset` or `exclude_none`,
+        these values will be ignored.
+        """
+        for key in ["exclude_unset", "exclude_none"]:
+            if key in kwargs:
+                kwargs.pop(key)
+        return self.model_dump(
+            mode="json", exclude_unset=True, exclude_none=True, **kwargs
+        )
 
     def __repr__(self):
-        return f"Message({self.root})"
+        return f"Message(role={self.root.role}, content={self.root.content})"
 
     def __str__(self):
-        return f"Message({self.root})"
-
-    @overload
-    def convert_prompt(self, model: Literal["claude"]) -> "Message": ...
-    @overload
-    def convert_prompt(self, model: Literal["gemini"]) -> str: ...
-
-    def convert_prompt(  # pylint: disable=R1710
-        self, model: Literal["claude", "gemini"]
-    ) -> Union["Message", str]:
-        """Create a `UserMessage` with the given prompt as content.
-
-        This is for Claude. The format is <instructions> ```prompt```</instructions>.
-        """
-        if self.role != "system":
-            raise ValueError("only SystemMessages can be converted")
-        if model not in {"claude", "gemini"}:
-            raise ValueError(f"model must be 'claude' or 'gemini', not {model}")
-        if model == "claude":
-            return Message(  # type: ignore
-                role="user", content=f"<instructions>{self.content}</instructions>"
-            )
-        if model == "gemini":
-            return self.content
+        return f"Message(role={self.root.role}, content={self.root.content})"
