@@ -8,6 +8,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^2.7.4"
+anthropic = "^0.31.0"
+openai = "^1.35.13"
+requests = "^2.32.3"
 
 
 [build-system]
