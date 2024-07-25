@@ -12,27 +12,31 @@ import solara.lab
 
 from aithena_services import BaseLLM, Message  # type: ignore
 
-OPENAI_AVAILABLE = True
-ANTHROPIC_AVAILABLE = True
-OLLAMA_AVAILABLE = True
+OPENAI_AVAILABLE = False
+ANTHROPIC_AVAILABLE = False
+OLLAMA_AVAILABLE = False
 
 try:
     from aithena_services import OpenAI
+
+    OPENAI_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
+    pass
 try:
     from aithena_services import Ollama
+
+    OLLAMA_AVAILABLE = True
 except ImportError:
-    OLLAMA_AVAILABLE = False
+    pass
 try:
     from aithena_services import Anthropic
-except ImportError:
-    ANTHROPIC_AVAILABLE = False
 
-try:
-    from anthropic.types import TextDelta
-except ModuleNotFoundError:
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
     pass
+
+if ANTHROPIC_AVAILABLE:
+    from anthropic.types import TextDelta
 
 FILE_PATH = Path(__file__).parent.absolute()
 
