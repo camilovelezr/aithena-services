@@ -1,22 +1,27 @@
 """LLM Models for Aithena Services."""
 
-import os
+from aithena_services.envvars import (
+    AnthropicAvailable,
+    OllamaAvailable,
+    OpenAIAvaliable,
+)
 
 from .base import BaseLLM
 
 __all__ = ["BaseLLM"]
 
-if os.getenv("OPENAI_API_KEY", None) is not None:
+
+if OpenAIAvaliable:
     from .openai_ import OpenAI
 
     __all__.append("OpenAI")
 
-if os.getenv("ANTHROPIC_API_KEY", None) is not None:
+if AnthropicAvailable:
     from .anthropic_ import Anthropic
 
     __all__.append("Anthropic")
 
-if os.getenv("OLLAMA_URL", None) is not None:
+if OllamaAvailable:
     from .ollama_ import Ollama
 
     __all__.append("Ollama")

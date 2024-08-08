@@ -30,8 +30,6 @@ def list_ollama_models(url: str = OLLAMA_URL) -> list[str]:
 OLLAMA_MODELS = list_ollama_models()
 
 
-# @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
-# class InternalOllamaStream:
 class InternalOllamaStream(BaseModel):
     """Streamed Response model for Ollama."""
 

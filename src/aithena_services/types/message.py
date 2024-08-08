@@ -51,7 +51,7 @@ class UserMessage(BaseMessage):
 
     role: Literal["user"] = Field(default="user", frozen=True)
     name: Optional[str] = Field(None, repr=False)
-    content: Union[str, list[ContentPart]]
+    content: Union[str, list[ContentPart]]  # type: ignore
 
 
 class SystemMessage(BaseMessage):

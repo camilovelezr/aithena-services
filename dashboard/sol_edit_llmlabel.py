@@ -127,8 +127,8 @@ if OLLAMA_AVAILABLE:
     )
 
 LLM_NAME: solara.Reactive[str] = (
-    solara.reactive("llama3")
-    if "llama3" in LLM_DICT
+    solara.reactive("llama3.1")
+    if "llama3.1" in LLM_DICT
     else solara.reactive(list(LLM_DICT.keys())[0])
 )
 LLM: solara.Reactive[Type[BaseLLM]]
@@ -333,7 +333,7 @@ def ModelLabel(index: int, model: str, task, is_last: bool = False):
                     btn = rv.Btn(
                         children=[
                             rv.Icon(
-                                children=["mdi-head-plus"],
+                                children=["mdi-creation"],
                             )
                         ],
                         icon=True,
@@ -366,7 +366,7 @@ def ModelLabel(index: int, model: str, task, is_last: bool = False):
                 rv.Btn(
                     children=[
                         rv.Icon(
-                            children=["mdi-head-plus"],
+                            children=["mdi-creation"],
                         )
                     ],
                     icon=True,
