@@ -2,17 +2,13 @@
 
 # pylint: disable=E1129, E1120, C0116, C0103
 import json
-from copy import copy
-from functools import partial
 from pathlib import Path
-from typing import Callable
 
 # import reacton.ipyvuetify as rv
 import requests  # type: ignore
 import solara
 import solara.lab
 from component_utils import EditableMessage, ModelLabel, ModelRow
-from solara.lab import Ref
 
 FILE_PATH = Path(__file__).parent.absolute()
 
@@ -121,8 +117,6 @@ def Page():
             MESSAGES.set,
             set_edit_mode,
         )
-        with solara.Div(style={"height": "10px"}):
-            solara.display(model_labels)
         with solara.lab.ChatBox():
             for index, item in enumerate(MESSAGES.value):
                 is_last = index == len(MESSAGES.value) - 1
