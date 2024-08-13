@@ -5,7 +5,7 @@
 from aithena_services.envvars import (
     AnthropicAvailable,
     OllamaAvailable,
-    OpenAIAvaliable,
+    OpenAIAvailable,
 )
 
 from .message import Message
@@ -13,7 +13,7 @@ from .models import BaseLLM
 
 __all__ = ["Message", "BaseLLM"]
 
-if OpenAIAvaliable:
+if OpenAIAvailable:
     from .models import OpenAI
 
     __all__.append("OpenAI")

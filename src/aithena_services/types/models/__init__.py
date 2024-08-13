@@ -3,7 +3,7 @@
 from aithena_services.envvars import (
     AnthropicAvailable,
     OllamaAvailable,
-    OpenAIAvaliable,
+    OpenAIAvailable,
 )
 
 from .base import BaseLLM
@@ -11,7 +11,7 @@ from .base import BaseLLM
 __all__ = ["BaseLLM"]
 
 
-if OpenAIAvaliable:
+if OpenAIAvailable:
     from .openai_ import OpenAI
 
     __all__.append("OpenAI")

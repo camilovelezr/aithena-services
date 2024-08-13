@@ -11,8 +11,10 @@ from typing_extensions import Literal
 from ..message import Message
 from .base import BaseLLM
 
+#TODO (IMPROVE MODULARITY, SINGLE SOURCE OF TRUTH) either push var config here or import var from top level
 OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
+# TODO (SINGLE RESPONSABILITY), validation should be done when config is read
 if not OLLAMA_URL.endswith("/api"):
     OLLAMA_URL += "/api"
 if not OLLAMA_URL.startswith("http"):
@@ -50,11 +52,11 @@ class InternalOllamaStream(BaseModel):
         self.ollama_instance.messages.append(self.message)
 
 
-# @dataclass
 class Ollama(BaseLLM):
     """Ollama models."""
 
     platform: Literal["Ollama"] = "Ollama"
+    #TODO ask Camilo, what is the semantic of name here?
     name: Literal[tuple(OLLAMA_MODELS)]  # type: ignore
     # prompt: Optional[Message] = None
     base_url: str = Field(default=OLLAMA_URL, frozen=True)
@@ -62,6 +64,9 @@ class Ollama(BaseLLM):
     _chat_url: str = PrivateAttr()
     _stream: Any = None
 
+    # TODO ask Camilo, what is the intent of having a static method?
+    # we could have a base_url that is not the default, and both name and list_models would be irrelevant
+    # make all that part of __init__?
     @staticmethod
     def list_models() -> list[str]:
         """List available Ollama models."""
@@ -74,6 +79,7 @@ class Ollama(BaseLLM):
             if n == 0 and message.role == "system":
                 self.prompt = message
                 self.messages = self.messages[1:]
+            # TODO what happen if the first message is not prompt or that we have a empty message list?
 
         self._chat_url = self.base_url + "/chat"
         return self
