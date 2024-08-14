@@ -6,15 +6,7 @@ from typing import Any, Sequence
 
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaIndexAzureOpenAI
 
-from aithena_services.envvars import (
-    AZURE_OPENAI_API_VERSION_ENV as AZURE_OPENAI_API_VERSION,
-)
-from aithena_services.envvars import (
-    AZURE_OPENAI_DEPLOYMENT_NAME_ENV as AZURE_OPENAI_DEPLOYMENT_NAME,
-)
-from aithena_services.envvars import AZURE_OPENAI_ENDPOINT_ENV as AZURE_OPENAI_ENDPOINT
-from aithena_services.envvars import AZURE_OPENAI_KEY_ENV as AZURE_OPENAI_KEY
-from aithena_services.envvars import AZURE_OPENAI_MODEL_ENV as AZURE_OPENAI_MODEL
+from aithena_services.envvars import AZURE_OPENAI_ENV_DICT
 from aithena_services.llms.types import (
     ChatResponse,
     ChatResponseAsyncGen,
@@ -28,23 +20,14 @@ class AzureOpenAI(LlamaIndexAzureOpenAI):
     """AzureOpenAI LLMs."""
 
     def __init__(self, **kwargs: Any):
-        kwargs["api_key"] = AZURE_OPENAI_KEY
-        kwargs["azure_endpoint"] = AZURE_OPENAI_ENDPOINT
-        kwargs["api_version"] = AZURE_OPENAI_API_VERSION
-        if AZURE_OPENAI_MODEL is not None:
-            kwargs["model"] = AZURE_OPENAI_MODEL
-        if AZURE_OPENAI_DEPLOYMENT_NAME is not None:
-            kwargs["engine"] = AZURE_OPENAI_DEPLOYMENT_NAME
+        kwargs["api_key"] = AZURE_OPENAI_ENV_DICT["api_key"]
+        kwargs["azure_endpoint"] = AZURE_OPENAI_ENV_DICT["azure_endpoint"]
+        kwargs["api_version"] = AZURE_OPENAI_ENV_DICT["api_version"]
+        if AZURE_OPENAI_ENV_DICT["model"] is not None and "model" not in kwargs:
+            kwargs["model"] = AZURE_OPENAI_ENV_DICT["model"]
+        if AZURE_OPENAI_ENV_DICT["engine"] is not None and "engine" not in kwargs:
+            kwargs["engine"] = AZURE_OPENAI_ENV_DICT["engine"]
         super().__init__(**kwargs)
-
-    # @staticmethod
-    # def list_models(url: str = OLLAMA_URL) -> list[str]:  # type: ignore
-    #     """List available Ollama models."""
-    #     names_ = [
-    #         x["name"]
-    #         for x in requests.get(url + "/api/tags", timeout=40).json()["models"]
-    #     ]
-    #     return [x.replace(":latest", "") for x in names_]
 
     def chat(self, messages: Sequence[dict | Message], **kwargs: Any) -> ChatResponse:
         messages = check_and_cast_messages(messages)
