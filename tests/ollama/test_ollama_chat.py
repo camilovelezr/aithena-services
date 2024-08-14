@@ -31,13 +31,6 @@ STREAM_FLUSH = False # if set to True force flush the stream if stream does not 
 
 logger.info(f"using ollama at: {async_client._client._base_url}")
 
-
-@pytest.fixture
-def prompt():
-    message = {'role': 'user', 'content': 'Why is the sky blue?'}
-    return message
-
-
 async def async_chat(messages):
     """Async chat."""
     try:
@@ -66,11 +59,11 @@ def chat(messages, stream=False):
 
 
 @pytest.mark.asyncio
-async def test_chat(prompt):
+async def test_chat(user_message):
     """Test async chat."""
     total_durations = []
     for i in range(RUN_COUNT):
-        messages = [prompt]
+        messages = [user_message]
         res = await async_chat(messages)
         logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"
@@ -81,11 +74,11 @@ async def test_chat(prompt):
         fw.write(f"async:True, stream:True, avg_total_duration: {avg_total_duration}s \n")
 
 
-def test_chat_sync_stream(prompt):
+def test_chat_sync_stream(user_message):
     """Test synchronous chat as a stream."""
     total_durations = []
     for i in range(RUN_COUNT):
-        messages = [prompt]
+        messages = [user_message]
         res = chat(messages, stream=True)
         logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"
@@ -96,11 +89,11 @@ def test_chat_sync_stream(prompt):
         fw.write(f"async:False, stream:True, avg_total_duration: {avg_total_duration}s \n")
 
 
-def test_chat_sync(prompt):
+def test_chat_sync(user_message):
     """Test synchronous chat."""
     total_durations = []
     for i in range(RUN_COUNT):
-        messages = [prompt]
+        messages = [user_message]
         res = chat(messages, stream=False)
         logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"

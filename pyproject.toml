@@ -12,7 +12,9 @@ anthropic = "^0.31.0"
 openai = "^1.35.13"
 requests = "^2.32.3"
 ollama = "^0.3.1"
-numpy = "^2.0.1"
+numpy = "^1"
+llama-index = "^0.10.65"
+llama-index-llms-ollama = "^0.2.2"
 
 
 [tool.poetry.group.dev.dependencies]
