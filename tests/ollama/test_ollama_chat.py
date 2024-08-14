@@ -1,23 +1,35 @@
-"""Tests for Ollama."""
-import asyncio
+"""Test and benchmark ollama chat capabilities.
+
+env variable used for config: OLLAMA_HOST
+
+ollama chat options are listed here: https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-chat-completion
+
+TODO we may want to demonstrate use of images (with multimodal models) and tools.
+"""
 from pathlib import Path
-import httpx
 import ollama
 import pytest
 import numpy as np
+import logging
 
-# pytest_plugins = ('pytest_asyncio',)
-
-# OLLAMA_HOST use by ollama client
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
+logger = logging.getLogger(__file__)
 
 # create a single client
-async_client = ollama.AsyncClient(host='http://localhost:11434')
-client = ollama.Client(host='http://localhost:11434')
+async_client = ollama.AsyncClient()
+client = ollama.Client()
 
-RUN_COUNT = 4
+RUN_COUNT = 1
 PERF_LOGFILE = Path("perf.log")
 
-print(f"client created once.... {async_client._client._base_url}")
+# for visual debugging
+# STREAM_END_TOKEN = "\n"
+STREAM_END_TOKEN = ""
+STREAM_FLUSH = False # if set to True force flush the stream if stream does not ends with "/n"
+
+logger.info(f"using ollama at: {async_client._client._base_url}")
 
 
 @pytest.fixture
@@ -26,15 +38,15 @@ def prompt():
     return message
 
 
-# chat asynchronously
 async def async_chat(messages):
     """Async chat."""
     try:
         async for resp_chunk in await async_client.chat(model='llama3.1', messages=messages, stream=True):
-            print(resp_chunk['message']['content'], end='', flush=True)
+            print(resp_chunk['message']['content'], end=STREAM_END_TOKEN, flush=STREAM_FLUSH)
         return resp_chunk
     except ollama.ResponseError as e:
-        print('Error:', e.error)
+        logger.error("Ollama error", exc_info=True)
+        raise
 
 
 def chat(messages, stream=False):
@@ -43,14 +55,14 @@ def chat(messages, stream=False):
         if stream:
             resp_chunks = client.chat(model='llama3.1', messages=messages, stream=stream)
             for chunk in resp_chunks:
-                print(chunk['message']['content'], end='', flush=True)
+                print(chunk['message']['content'], end=STREAM_END_TOKEN, flush=STREAM_FLUSH)
             return chunk
         
         resp = client.chat(model='llama3.1', messages=messages, stream=stream)
-        print(resp)
+        logger.info(resp)
         return resp
     except ollama.ResponseError as e:
-        print('Error:', e.error)
+        logger.info('Error:', e.error)
 
 
 @pytest.mark.asyncio
@@ -60,7 +72,7 @@ async def test_chat(prompt):
     for i in range(RUN_COUNT):
         messages = [prompt]
         res = await async_chat(messages)
-        print(res)
+        logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"
         log_stats(res)
         total_durations.append(res["total_duration"])
@@ -75,7 +87,7 @@ def test_chat_sync_stream(prompt):
     for i in range(RUN_COUNT):
         messages = [prompt]
         res = chat(messages, stream=True)
-        print(res)
+        logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"
         log_stats(res)
         total_durations.append(res["total_duration"])
@@ -90,7 +102,7 @@ def test_chat_sync(prompt):
     for i in range(RUN_COUNT):
         messages = [prompt]
         res = chat(messages, stream=False)
-        print(res)
+        logger.info(res)
         assert res["done"] and res["done_reason"] == "stop"
         log_stats(res)
         total_durations.append(res["total_duration"])
@@ -105,8 +117,9 @@ def log_stats(res):
     load_duration = res["load_duration"] / 10**9
     prompt_eval_duration = res["prompt_eval_duration"] / 10**9
     eval_duration = res["eval_duration"] / 10**9
-    print(f"token per second: {token_per_second}")
-    print(f"total duration: {total_duration}")
-    print(f"load duration: {load_duration}")
-    print(f"prompt eval duration: {prompt_eval_duration}")
-    print(f"eval duration: {eval_duration}")
+    logger.info(f"token per second: {token_per_second}")
+    logger.info(f"total duration: {total_duration}")
+    logger.info(f"load duration: {load_duration}")
+    logger.info(f"prompt eval duration: {prompt_eval_duration}")
+    logger.info(f"eval duration: {eval_duration}")
+
