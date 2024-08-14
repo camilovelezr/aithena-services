@@ -1,15 +1,25 @@
 """Message types for Aithena services."""
 
+import enum
 from typing import TYPE_CHECKING, Optional, Union, overload
 
 from pydantic import BaseModel, Field, RootModel
 from typing_extensions import Annotated, Literal
 
 
+class Role(str, enum.Enum):
+    """Role of the message."""
+
+    USER = "user"
+    SYSTEM = "system"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
+
 class BaseMessage(BaseModel):
     """Base class for all messages."""
 
-    role: Literal["user", "system", "assistant", "tool"]
+    role: Role
     content: Optional[str] = None
 
 
@@ -49,7 +59,7 @@ ContentPart = Annotated[
 class UserMessage(BaseMessage):
     """User message."""
 
-    role: Literal["user"] = Field(default="user", frozen=True)
+    role: Literal[Role.USER] = Field(default=Role.USER, frozen=True)
     name: Optional[str] = Field(None, repr=False)
     content: Union[str, list[ContentPart]]  # type: ignore
 
@@ -57,26 +67,22 @@ class UserMessage(BaseMessage):
 class SystemMessage(BaseMessage):
     """System message."""
 
-    role: Literal["system"] = Field(default="system", frozen=True)
+    role: Literal[Role.SYSTEM] = Field(default=Role.SYSTEM, frozen=True)
     content: str  # not optional
     name: Optional[str] = Field(None, repr=False)
-
-    # NOTE: will turn to using prompt as kwarg for Anthropic
-    # (and this is the behavior of Gemini by default) so
-    # no need for the convert_prompt method
 
 
 class AssistantMessage(BaseMessage):
     """Assistant message."""
 
-    role: Literal["assistant"] = Field(default="assistant", frozen=True)
+    role: Literal[Role.ASSISTANT] = Field(default=Role.ASSISTANT, frozen=True)
     name: Optional[str] = Field(None, repr=False)
 
 
 class ToolMessage(BaseMessage):
     """Tool message."""
 
-    role: Literal["tool"] = Field(default="tool", frozen=True)
+    role: Literal[Role.TOOL] = Field(default=Role.TOOL, frozen=True)
 
 
 MessageRoot = Annotated[
@@ -151,6 +157,16 @@ class Message(RootModel):
                 kwargs.pop(key)
         return self.model_dump(
             mode="json", exclude_unset=True, exclude_none=True, **kwargs
+        )
+
+    @property
+    def additional_kwargs(self) -> dict:
+        """Keyword arguments that are not `role` or `content`, for compatibility with LlamaIndex."""
+        return self.root.model_dump(
+            mode="python",
+            exclude_unset=False,
+            exclude_none=False,
+            exclude={"role", "content"},
         )
 
     def __repr__(self):
