@@ -1,7 +1,7 @@
 """OpenAI Implementation based on LlamaIndex."""
 
 # pylint: disable=too-many-ancestors
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI  # type: ignore
 from openai import OpenAI as OpenAIClient
@@ -38,6 +38,17 @@ OPENAI_MODELS = list_openai_models()
 
 class OpenAI(LlamaIndexOpenAI):
     """OpenAI models."""
+
+    def __init__(
+        self, model: Optional[str] = None, **kwargs: Any
+    ):  # model Optional for better exception message
+        if not model:
+            raise ValueError(f"Model not specified. Available models: {OPENAI_MODELS}")
+        if model not in OPENAI_MODELS:
+            raise ValueError(
+                f"Model {model} not available. Available models: {OPENAI_MODELS}"
+            )
+        super().__init__(model, **kwargs)
 
     @staticmethod
     def list_models() -> list[str]:
