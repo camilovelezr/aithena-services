@@ -1,7 +1,6 @@
 """Pytest configuration."""
 import pytest
-
-
+import os
 
 @pytest.fixture
 def user_message():
