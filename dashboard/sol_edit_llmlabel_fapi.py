@@ -2,6 +2,7 @@
 
 # pylint: disable=E1129, E1120, C0116, C0103
 import json
+import os
 from pathlib import Path
 
 # import reacton.ipyvuetify as rv
@@ -53,6 +54,22 @@ edit_index = solara.reactive(None)
 current_edit_value = solara.reactive("")
 LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()
 
+CHAT_URL = "http://localhost:8000/chat/"
+
+AZURE_AVAILABLE = False
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", None)
+if AZURE_OPENAI_ENDPOINT is not None:
+    AZURE_AVAILABLE = True
+    LLMS_AVAILABLE.append("azure")
+
+
+def get_chat_url(model_: str) -> str:
+    """Return the chat URL for the given model."""
+    if AZURE_AVAILABLE and model_ == "azure":
+        # ignore model, use env var
+        return CHAT_URL + "azure/generate"
+    return CHAT_URL + model_ + "/generate"
+
 
 @solara.component
 def Page():
@@ -81,7 +98,7 @@ def Page():
         if user_message_count == 0:
             return
         response = requests.post(
-            f"http://localhost:8000/chat/{llm_name}/generate",
+            get_chat_url(llm_name),
             json=MESSAGES.value,
             timeout=60,
             stream=True,
