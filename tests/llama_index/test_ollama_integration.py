@@ -1,8 +1,4 @@
-"""
-Ollama integration with llama index.
-
-NOTE all performance metrics are removed by the llama-index wrapper.
-"""
+"""Ollama integration with llama index."""
 
 from llama_index.llms.ollama import Ollama
 from llama_index.core.llms import ChatMessage
@@ -16,7 +12,7 @@ logger = logging.getLogger(__file__)
 
 @pytest.fixture
 def llm():
-    """Create an llama3.1 7B model served with Ollama."""
+    """Create an llama3.1 8B model served with Ollama."""
     return Ollama(model="llama3.1:latest", request_timeout=120.0)
 
 @pytest.fixture
@@ -29,19 +25,13 @@ def llm_extra():
     return Ollama(model="llama3.1:latest", request_timeout=120.0, temperature=1.0, additional_kwargs={"top_k": 1})
 
 
+"""Test 4 modes of operations: sync or async, with streamed response or not."""
+
 def test_chat(llm, user_message: dict[str, str]):
     """Sync implementation of ollama chat integration."""
     messages = [ChatMessage(**user_message)]
     resp = llm.chat(messages)
     logger.info(f"output: {resp.message.content}")
-
-
-def test_chat_with_extra_params(llm_extra, user_message: dict[str, str]):
-    """Use an llm with custom parameters."""
-    messages = [ChatMessage(**user_message)]
-    resp = llm_extra.chat(messages)
-    logger.info(f"output: {resp.message.content}")  
-    #TODO add assert
 
 
 def test_chat_sync_stream(llm, user_message):
@@ -71,4 +61,21 @@ async def test_chat_async_stream(llm, user_message: dict[str, str]):
     logger.info(f"output: {chunk.message.content}")
 
 
+"""Other tests."""
+
+def test_chat_with_extra_params(llm_extra, user_message: dict[str, str]):
+    """Use an llm with custom parameters."""
+    messages = [ChatMessage(**user_message)]
+    resp = llm_extra.chat(messages)
+    logger.info(f"output: {resp.message.content}")  
+    #TODO add assert
+
+
+def test_chat_get_raw_llm_response(llm, user_message: dict[str, str]):
+    """We can get the raw llm response for llm specific info.
+    For example for ollama, we can collect performance metrics.
+    """
+    messages = [ChatMessage(**user_message)]
+    resp = llm.chat(messages)
+    assert isinstance(resp.raw["total_duration"], int)
 

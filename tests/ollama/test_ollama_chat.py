@@ -1,7 +1,5 @@
 """Test and benchmark ollama chat capabilities.
 
-env variable used for config: OLLAMA_HOST
-
 ollama chat options are listed here: https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-chat-completion
 
 TODO we may want to demonstrate use of images (with multimodal models) and tools.
@@ -11,6 +9,16 @@ import ollama
 import pytest
 import numpy as np
 import logging
+import os
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv(), override=True)
+
+"""Document params required to set up the client."""
+host = os.getenv("OLLAMA_HOST", "") # this is what the ollama client expects
+if host == "":
+    host = os.getenv("OLLAMA_URL", "")
+
 
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
@@ -18,8 +26,8 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(messa
 logger = logging.getLogger(__file__)
 
 # create a single client
-async_client = ollama.AsyncClient()
-client = ollama.Client()
+async_client = ollama.AsyncClient(host)
+client = ollama.Client(host)
 
 RUN_COUNT = 1
 PERF_LOGFILE = Path("perf.log")
