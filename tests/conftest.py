@@ -1,6 +1,6 @@
 """Pytest configuration."""
-
 import pytest
+
 
 
 @pytest.fixture
