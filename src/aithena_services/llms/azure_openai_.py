@@ -1,12 +1,12 @@
+# mypy: disable-error-code="import-untyped"
 """Ollama implementation based on LlamaIndex."""
 
 # pylint: disable=too-many-ancestors
 from typing import Any, Sequence
 
-import requests  # type: ignore
-from llama_index.llms.ollama import Ollama as LlamaIndexOllama  # type: ignore
+from llama_index.llms.azure_openai import AzureOpenAI as LlamaIndexAzureOpenAI
 
-from aithena_services.envvars import OLLAMA_URL_ENV as OLLAMA_URL
+from aithena_services.envvars import AZURE_OPENAI_ENV_DICT
 from aithena_services.llms.types import (
     ChatResponse,
     ChatResponseAsyncGen,
@@ -16,21 +16,18 @@ from aithena_services.llms.types import (
 from aithena_services.llms.utils import check_and_cast_messages
 
 
-class Ollama(LlamaIndexOllama):
-    """Ollama LLMs."""
+class AzureOpenAI(LlamaIndexAzureOpenAI):
+    """AzureOpenAI LLMs."""
 
     def __init__(self, **kwargs: Any):
-        kwargs["base_url"] = OLLAMA_URL
+        kwargs["api_key"] = AZURE_OPENAI_ENV_DICT["api_key"]
+        kwargs["azure_endpoint"] = AZURE_OPENAI_ENV_DICT["azure_endpoint"]
+        kwargs["api_version"] = AZURE_OPENAI_ENV_DICT["api_version"]
+        if AZURE_OPENAI_ENV_DICT["model"] is not None and "model" not in kwargs:
+            kwargs["model"] = AZURE_OPENAI_ENV_DICT["model"]
+        if AZURE_OPENAI_ENV_DICT["engine"] is not None and "engine" not in kwargs:
+            kwargs["engine"] = AZURE_OPENAI_ENV_DICT["engine"]
         super().__init__(**kwargs)
-
-    @staticmethod
-    def list_models(url: str = OLLAMA_URL) -> list[str]:  # type: ignore
-        """List available Ollama models."""
-        names_ = [
-            x["name"]
-            for x in requests.get(url + "/api/tags", timeout=40).json()["models"]
-        ]
-        return [x.replace(":latest", "") for x in names_]
 
     def chat(self, messages: Sequence[dict | Message], **kwargs: Any) -> ChatResponse:
         messages = check_and_cast_messages(messages)
