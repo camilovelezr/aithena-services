@@ -3,7 +3,7 @@
 import os
 
 OPENAI_KEY_ENV = os.getenv("OPENAI_API_KEY", None)
-OLLAMA_URL_ENV = os.getenv("OLLAMA_URL", None)
+OLLAMA_HOST_ENV = os.getenv("OLLAMA_HOST", None)
 
 # ----AzureOpenAI----
 # ---required---
@@ -22,7 +22,7 @@ AZURE_OPENAI_ENV_DICT = {
 }
 
 OPENAI_AVAILABLE = OPENAI_KEY_ENV is not None
-OLLAMA_AVAILABLE = OLLAMA_URL_ENV is not None
+OLLAMA_AVAILABLE = OLLAMA_HOST_ENV is not None
 AZURE_OPENAI_AVAILABLE = (
     (AZURE_OPENAI_KEY_ENV is not None)
     and (AZURE_OPENAI_ENDPOINT_ENV is not None)
@@ -34,7 +34,7 @@ __all__ = [
     "OPENAI_AVAILABLE",
     "OLLAMA_AVAILABLE",
     "OPENAI_KEY_ENV",
-    "OLLAMA_URL_ENV",
+    "OLLAMA_HOST_ENV",
     "AZURE_OPENAI_AVAILABLE",
     "AZURE_OPENAI_ENV_DICT",
 ]

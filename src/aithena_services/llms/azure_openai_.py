@@ -17,7 +17,25 @@ from aithena_services.llms.utils import check_and_cast_messages
 
 
 class AzureOpenAI(LlamaIndexAzureOpenAI):
-    """AzureOpenAI LLMs."""
+    """Azure OpenAI LLMs.
+
+    To use this, you must first deploy a model on Azure OpenAI.
+    Unlike OpenAI, you need to specify a `engine` parameter to identify
+    your deployment (called "model deployment name" in Azure portal).
+    You must have the following environment variables set:
+
+    - `AZURE_OPENAI_API_VERSION`: set this to `2023-07-01-preview` or newer.
+        This may change in the future.
+    - `AZURE_OPENAI_ENDPOINT`: your endpoint should look like the following
+        https://YOUR_RESOURCE_NAME.openai.azure.com/
+    - `AZURE_OPENAI_API_KEY`: your API key
+
+    Args:
+        model: Name of the model (e.g. `gpt-4o-mini`)
+        engine: This will correspond to the custom name you chose
+            for your deployment when you deployed a model.
+
+    """
 
     def __init__(self, **kwargs: Any):
         kwargs["api_key"] = AZURE_OPENAI_ENV_DICT["api_key"]
