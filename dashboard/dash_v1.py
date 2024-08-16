@@ -1,14 +1,14 @@
 """Chatbot multiple models."""
 
 # pylint: disable=E1129, E1120, C0116, C0103
-import json
 from pathlib import Path
 
-# import reacton.ipyvuetify as rv
-import requests  # type: ignore
 import solara
 import solara.lab
 from component_utils import EditableMessage, ModelLabel, ModelRow
+
+# import reacton.ipyvuetify as rv
+from aithena_services.llms import Ollama  # type: ignore
 
 FILE_PATH = Path(__file__).parent.absolute()
 
@@ -23,9 +23,10 @@ FILE_PATH = Path(__file__).parent.absolute()
 # Do not introduce yourself to user if user does not ask for it.
 # Never explain to user how your answers are.
 # """
-PROMPT = """Pretend you are Albert Einstein and answer in two or three sentences each time."""
+# PROMPT = """Pretend you are Albert Einstein and answer in two or three sentences each time."""
 
-MESSAGES = solara.reactive([{"role": "system", "content": PROMPT}])
+# MESSAGES = solara.reactive([{"role": "system", "content": PROMPT}])
+MESSAGES: solara.Reactive[list] = solara.reactive([])
 
 
 def add_chunk_to_ai_message(chunk: str):
@@ -43,7 +44,7 @@ def change_llm_name(set_llm_name, reset_on_change, set_model_labels, *args):
     """Change the selected LLM."""
     set_llm_name(args[-1])
     if reset_on_change:
-        MESSAGES.value = [{"role": "system", "content": PROMPT}]
+        MESSAGES.value = []
         set_model_labels({})
         return
     return
@@ -51,19 +52,98 @@ def change_llm_name(set_llm_name, reset_on_change, set_model_labels, *args):
 
 edit_index = solara.reactive(None)
 current_edit_value = solara.reactive("")
-LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()
-LLMS_AVAILABLE = [llm for llm in LLMS_AVAILABLE if not "embed" in llm]  # simple filter
+# LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()
+# LLMS_AVAILABLE = [llm for llm in LLMS_AVAILABLE if not "embed" in llm]  # simple filter
+LLMS_AVAILABLE = Ollama.list_models()
 
-CHAT_URL = "http://localhost:8000/chat/"
+
+# Define the dictionary with reactive values
+config = {
+    "mirostat": solara.reactive(0),  # int (0, 1, 2)
+    "mirostat_eta": solara.reactive(0.1),  # float (default 0.1)
+    "mirostat_tau": solara.reactive(5.0),  # float (default 5.0)
+    "num_ctx": solara.reactive(2048),  # int (default 2048)
+    "repeat_last_n": solara.reactive(64),  # int (default 64)
+    "repeat_penalty": solara.reactive(1.1),  # float (default 1.1)
+    "temperature": solara.reactive(0.7),  # float (default 0.7)
+    "seed": solara.reactive(42),  # int (default 0)
+    "stop": solara.reactive(None),  # string
+    "tfs_z": solara.reactive(1.0),  # float (default 1.0)
+    "top_k": solara.reactive(40),  # int (default 40)
+    "top_p": solara.reactive(0.9),  # float (default 0.9)
+    "min_p": solara.reactive(0.05),  # float (default 0.0)
+}
 
 
-def get_chat_url(model_: str) -> str:
-    """Return the chat URL for the given model."""
-    if model_.startswith("azure"):
-        # ignore model, use env var
-        print("Using Azure OpenAI model")
-        return CHAT_URL + "azure/generate"
-    return CHAT_URL + model_ + "/generate"
+# The UI components
+@solara.component
+def ConfigCard():
+    # Toggle switch to show or hide the card
+    # Show the card if the toggle is active
+    with solara.Column(gap="5px"):
+        with solara.Card(
+            title="LLM Configuration", elevation=2
+        ):  # Add sliders and input fields based on the updated info
+            solara.SliderInt(
+                label="mirostat", value=config["mirostat"], min=0, max=2, step=1
+            )
+            solara.SliderFloat(
+                label="mirostat_eta",
+                value=config["mirostat_eta"],
+                min=0.0,
+                max=1.0,
+                step=0.01,
+            )
+            solara.SliderFloat(
+                label="mirostat_tau",
+                value=config["mirostat_tau"],
+                min=0.0,
+                max=10.0,
+                step=0.1,
+            )
+            solara.SliderInt(
+                label="num_ctx", value=config["num_ctx"], min=0, max=10000, step=1
+            )
+            solara.SliderInt(
+                label="repeat_last_n",
+                value=config["repeat_last_n"],
+                min=-1,
+                max=config["num_ctx"].value,
+                step=1,
+            )
+            solara.SliderFloat(
+                label="repeat_penalty",
+                value=config["repeat_penalty"],
+                min=0.5,
+                max=2.0,
+                step=0.01,
+            )
+            solara.SliderFloat(
+                label="temperature",
+                value=config["temperature"],
+                min=0.0,
+                max=1.0,
+                step=0.01,
+            )
+            solara.InputInt(
+                label="seed",
+                value=config["seed"],
+            )
+            solara.InputText(label="stop", value=config["stop"])
+            solara.SliderFloat(
+                label="tfs_z", value=config["tfs_z"], min=1.0, max=2.0, step=0.01
+            )
+            solara.SliderInt(
+                label="top_k", value=config["top_k"], min=0, max=100, step=1
+            )
+            solara.SliderFloat(
+                label="top_p", value=config["top_p"], min=0.0, max=1.0, step=0.01
+            )
+            solara.SliderFloat(
+                label="min_p", value=config["min_p"], min=0.0, max=1.0, step=0.01
+            )
+
+        solara.Button(label="Reset Messages", on_click=lambda: MESSAGES.set([]))
 
 
 @solara.component
@@ -92,28 +172,28 @@ def Page():
         print(f"Calling LLM with {MESSAGES.value}")
         if user_message_count == 0:
             return
-        response = requests.post(
-            get_chat_url(llm_name),
-            json=MESSAGES.value,
-            timeout=60,
-            stream=True,
-        )
+        ks = {k: v.value for k, v in config.items()}
+        llm = Ollama(model=llm_name, **ks)
+        print(llm)
+        response = llm.stream_chat(MESSAGES.value)
         print(f"Sent messages to LLM: {MESSAGES.value}")
         msgs = [*MESSAGES.value, {"role": "assistant", "content": ""}]
         MESSAGES.value = msgs
 
-        for line in response.iter_lines():
-            print(f"Received line: {line}")
-            if line:
-                add_chunk_to_ai_message(json.loads(line)["delta"])
+        for chunk in response:
+            if chunk:
+                add_chunk_to_ai_message(chunk.delta)
 
     task = solara.lab.use_task(call_llm, dependencies=[user_message_count])  # type: ignore
+
+    with solara.Sidebar():
+        ConfigCard()
 
     with solara.Column(
         style={
             "width": "100%",
             "position": "relative",
-            "height": "calc(100vh - 50px)",
+            "height": "calc(100vh - 130px)",
             "padding-bottom": "15px",
             "overflow-y": "auto",
         },

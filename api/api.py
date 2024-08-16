@@ -19,6 +19,7 @@ from aithena_services.llms.types import Message
 if OPENAI_AVAILABLE:
     from aithena_services.llms import OpenAI
 if AZURE_OPENAI_AVAILABLE:
+    from aithena_services.envvars import AZURE_OPENAI_MODEL_ENV
     from aithena_services.llms import AzureOpenAI
 if OLLAMA_AVAILABLE:
     from aithena_services.llms import Ollama
@@ -28,27 +29,56 @@ app = FastAPI()
 
 def check_platform(platform: str):
     """Check if the platform is valid."""
-    if platform not in ["ollama", "openai"]:
+    if platform not in ["ollama", "openai", "azure"]:
         raise HTTPException(
-            status_code=400, detail="Invalid platform, must be 'ollama' or 'openai'"
+            status_code=400,
+            detail="Invalid platform, must be 'ollama', 'openai' or 'azure'",
+        )
+    if platform == "ollama" and not OLLAMA_AVAILABLE:
+        raise HTTPException(
+            status_code=400,
+            detail="Ollama is not available.",
+        )
+    if platform == "openai" and not OPENAI_AVAILABLE:
+        raise HTTPException(
+            status_code=400,
+            detail="OpenAI is not available.",
+        )
+    if platform == "azure" and not AZURE_OPENAI_AVAILABLE:
+        raise HTTPException(
+            status_code=400,
+            detail="Azure OpenAI is not available.",
         )
 
 
 @app.get("/chat/list")
 def list_models():
     """List all available chat models."""
-    ollama_models = Ollama.list_models()
-    openai_models = OpenAI.list_models()
-    return ollama_models + openai_models
+    models = []
+    if OLLAMA_AVAILABLE:
+        models.extend(Ollama.list_models())
+    if OPENAI_AVAILABLE:
+        models.extend(OpenAI.list_models())
+    if AZURE_OPENAI_AVAILABLE:
+        models.extend([f"azure/{AZURE_OPENAI_MODEL_ENV}"])
+    return models
 
 
 @app.get("/chat/list/{platform}")
 def list_models_by_platform(platform: str):
     """List all available chat models by platform."""
+    print(f"checking platform {platform}")
     check_platform(platform)
-    ollama_models = Ollama.list_models()
-    openai_models = OpenAI.list_models()
-    return {"ollama": ollama_models, "openai": openai_models}[platform]
+    if platform == "ollama":
+        return Ollama.list_models()
+    if platform == "openai":
+        return OpenAI.list_models()
+    if platform == "azure":
+        return [f"azure/{AZURE_OPENAI_MODEL_ENV}"]
+    raise HTTPException(  # just for readability, check_platform should raise
+        status_code=400,
+        detail="Invalid platform, must be 'ollama', 'openai' or 'azure'",
+    )
 
 
 @app.post("/chat/azure/generate")
@@ -66,6 +96,7 @@ async def generate_azure(
         deployment: Optional name of the deployment, will override env var.
         model: Optional name of the model, will override env var.
     """
+    check_platform("azure")
     print(f"For Azure chat, received {messages}, stream: {stream}")
     messages_ = [Message(**msg) for msg in messages]
     if deployment is not None and model is not None:
@@ -95,13 +126,15 @@ async def generate_azure(
 @app.post("/chat/{model}/generate")
 async def generate_from_msgs(model: str, messages: list[dict], stream: bool = True):
     """Generate a chat completion from a list of messages."""
+    if OLLAMA_AVAILABLE:
+        ollama_models = Ollama.list_models()
+    if OPENAI_AVAILABLE:
+        openai_models = OpenAI.list_models()
     print(f"For {model} chat, received {messages}, stream: {stream}")
     messages_ = [Message(**msg) for msg in messages]
-    ollama_models = Ollama.list_models()
-    openai_models = OpenAI.list_models()
-    if model in ollama_models:
+    if OLLAMA_AVAILABLE and model in ollama_models:
         model_ = Ollama(model=model)
-    elif model in openai_models:
+    elif OPENAI_AVAILABLE and model in openai_models:
         model_ = OpenAI(model=model)
     else:
         raise HTTPException(status_code=400, detail="Invalid model.")
