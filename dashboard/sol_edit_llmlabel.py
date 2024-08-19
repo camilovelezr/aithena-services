@@ -10,33 +10,19 @@ import reacton.ipyvuetify as rv
 import solara
 import solara.lab
 
-from aithena_services import BaseLLM, Message  # type: ignore
+from aithena_services.envvars import (
+    AZURE_OPENAI_AVAILABLE,
+    OLLAMA_AVAILABLE,
+    OPENAI_AVAILABLE,
+)
 
-OPENAI_AVAILABLE = False
-ANTHROPIC_AVAILABLE = False
-OLLAMA_AVAILABLE = False
-
-try:
-    from aithena_services import OpenAI
-
-    OPENAI_AVAILABLE = True
-except ImportError:
-    pass
-try:
-    from aithena_services import Ollama
-
-    OLLAMA_AVAILABLE = True
-except ImportError:
-    pass
-try:
-    from aithena_services import Anthropic
-
-    ANTHROPIC_AVAILABLE = True
-except ImportError:
-    pass
-
-if ANTHROPIC_AVAILABLE:
-    from anthropic.types import TextDelta
+if AZURE_OPENAI_AVAILABLE:
+    from aithena_services.envvars import AZURE_OPENAI_MODEL_ENV
+    from aithena_services.llms import AzureOpenAI
+if OPENAI_AVAILABLE:
+    from aithena_services.llms import OpenAI
+if OLLAMA_AVAILABLE:
+    from aithena_services.llms import Ollama
 
 FILE_PATH = Path(__file__).parent.absolute()
 
@@ -53,85 +39,36 @@ Never explain to user how your answers are.
 """
 
 
-def cast_to_message(msg: Any) -> Message:
-    """Cast a message to a `Message` object."""
-    if not isinstance(msg, (dict, Message)):
-        raise ValueError(f"expected a dict or Message object, got {type(msg)}")
-    return Message(msg) if not isinstance(msg, Message) else msg
-
-
-def cast_to_message_list(msgs: list) -> list[Message]:
-    """Cast a list of messages to a list of `Message` objects."""
-    return [cast_to_message(x) for x in msgs]
-
-
-messages: solara.Reactive[list[Message]] = solara.reactive(
-    ([Message({"role": "system", "content": PROMPT})])
+messages: solara.Reactive[list[dict]] = solara.reactive(
+    ([{"role": "system", "content": PROMPT}])
 )
-OPENAI_MODEL_LIST = []
-ANTHROPIC_MODEL_LIST = []
-OLLAMA_MODEL_LIST = []
 
-
+LLMS_AVAILABLE = []
+if AZURE_OPENAI_AVAILABLE:
+    LLMS_AVAILABLE.append(f"azure/{AZURE_OPENAI_MODEL_ENV}")
 if OPENAI_AVAILABLE:
-
-    def return_openai_model(name: str, prompt: str, stream: bool) -> OpenAI:
-        """Return an OpenAI model with the given name, prompt, and stream."""
-        return OpenAI(name=name, prompt=prompt, stream=stream)
-
-    OPENAI_MODEL_LIST = OpenAI.list_models()
-
-
-if ANTHROPIC_AVAILABLE:
-
-    def return_anthropic_model(name: str, prompt: str, stream: bool) -> Anthropic:
-        """Return an OpenAI model with the given name, prompt, and stream."""
-        return Anthropic(name=name, prompt=prompt, stream=stream)
-
-    ANTHROPIC_MODEL_LIST = Anthropic.list_models()
-
-
+    LLMS_AVAILABLE.extend(OpenAI.list_models())
 if OLLAMA_AVAILABLE:
-
-    def return_ollama_model(name: str, prompt: str, stream: bool) -> Ollama:
-        """Return an OpenAI model with the given name, prompt, and stream."""
-        return Ollama(name=name, prompt=prompt, stream=stream)
-
-    OLLAMA_MODEL_LIST = Ollama.list_models()
+    LLMS_AVAILABLE.extend(Ollama.list_models())
 
 
-LLM_OPTIONS = [*OPENAI_MODEL_LIST, *ANTHROPIC_MODEL_LIST, *OLLAMA_MODEL_LIST]
+def get_model(name: str):
+    if AZURE_OPENAI_AVAILABLE and name.startswith("azure/"):
+        return AzureOpenAI()
+    if OPENAI_AVAILABLE and name in OpenAI.list_models():
+        return OpenAI(model=name)
+    if OLLAMA_AVAILABLE and name in Ollama.list_models():
+        return Ollama(model=name)
 
-LLM_DICT = {}
 
-if OPENAI_AVAILABLE:
-    LLM_DICT.update(
-        {
-            name: return_openai_model(name, PROMPT, stream=True)
-            for name in OPENAI_MODEL_LIST
-        }
-    )
-if ANTHROPIC_AVAILABLE:
-    LLM_DICT.update(
-        {
-            name: return_anthropic_model(name, PROMPT, stream=True)
-            for name in ANTHROPIC_MODEL_LIST
-        }
-    )
-if OLLAMA_AVAILABLE:
-    LLM_DICT.update(
-        {
-            name: return_ollama_model(name, PROMPT, stream=True)
-            for name in OLLAMA_MODEL_LIST
-        }
-    )
+LLM_DICT = {name: get_model(name) for name in LLMS_AVAILABLE}
+
 
 LLM_NAME: solara.Reactive[str] = (
     solara.reactive("llama3.1")
     if "llama3.1" in LLM_DICT
     else solara.reactive(list(LLM_DICT.keys())[0])
 )
-LLM: solara.Reactive[Type[BaseLLM]]
 
 RESET_ON_CHANGE: solara.Reactive[bool] = solara.Reactive(False)
 
@@ -140,22 +77,20 @@ EDIT_MODE: solara.Reactive[bool] = solara.Reactive(False)
 
 def add_chunk_to_ai_message(chunk: str):
     """Add chunk to assistant message."""
-    messages.value = cast_to_message_list(
-        [
-            *messages.value[:-1],
-            {
-                "role": "assistant",
-                "content": messages.value[-1].content + chunk,
-            },
-        ]
-    )
+    messages.value = [
+        *messages.value[:-1],
+        {
+            "role": "assistant",
+            "content": messages.value[-1]["content"] + chunk,
+        },
+    ]
 
 
 def change_llm_name(*args):
     """Change the selected LLM."""
     LLM_NAME.value = args[-1]
     if RESET_ON_CHANGE.value:
-        messages.value = cast_to_message_list([{"role": "system", "content": PROMPT}])
+        messages.value = [{"role": "system", "content": PROMPT}]
         return
     return
 
@@ -185,7 +120,7 @@ def ModelRow():
         },
     ):
         auto_complete = rv.Autocomplete(
-            label="Model", dense=True, items=LLM_OPTIONS, value=LLM_NAME.value
+            label="Model", dense=True, items=LLMS_AVAILABLE, value=LLM_NAME.value
         )
         rv.use_event(auto_complete, "change", change_llm_name)
         solara.Switch(
@@ -214,12 +149,11 @@ current_edit_value = solara.reactive("")
 
 def update_message():
     updated_messages = copy(messages.value)
-    updated_messages[edit_index.value] = cast_to_message(
-        {
-            "role": "assistant",
-            "content": current_edit_value.value,
-        }
-    )
+    updated_messages[edit_index.value] = {
+        "role": "assistant",
+        "content": current_edit_value.value,
+    }
+
     messages.set(updated_messages)
     edit_index.set(None)
 
@@ -228,7 +162,7 @@ def update_message():
 def EditableMessage(message, index):
     def handle_edit():
         edit_index.set(index)
-        current_edit_value.set(messages.value[index].content)
+        current_edit_value.set(messages.value[index]["content"])
 
     if edit_index.value == index:
         solara.MarkdownEditor(
@@ -304,7 +238,7 @@ def ChangeModelCard(index: int, model: str):
         auto_complete = rv.Autocomplete(
             label="Model",
             dense=True,
-            items=LLM_OPTIONS,
+            items=LLMS_AVAILABLE,
         )
         rv.use_event(auto_complete, "change", change_llm)
 
@@ -377,48 +311,29 @@ def ModelLabel(index: int, model: str, task, is_last: bool = False):
 def Page():
     solara.Style(FILE_PATH.joinpath("style.css"))
     solara.Title("Aithena")
-    CURRENT_LLM: solara.Reactive[BaseLLM] = solara.reactive(  # type: ignore
+    CURRENT_LLM: solara.Reactive = solara.reactive(  # type: ignore
         LLM_DICT[LLM_NAME.value]
     )
-    if CURRENT_LLM.value.platform == "Ollama":
-        CURRENT_LLM.value.prompt = messages.value[0]
-    else:
-        CURRENT_LLM.value.prompt = PROMPT
-    CURRENT_LLM.value.messages = messages.value[1:]
 
-    user_message_count = len([m for m in messages.value if m.role == "user"])
+    user_message_count = len([m for m in messages.value if m["role"] == "user"])
 
     def user_send(message):
-        messages.value = cast_to_message_list(
-            [
-                *messages.value,
-                {"role": "user", "content": message},
-            ]
-        )
-
-        CURRENT_LLM.messages = messages.value[1:]
+        messages.value = [
+            *messages.value,
+            {"role": "user", "content": message},
+        ]
 
     def call_llm():
         if user_message_count == 0:
             return
-        response = CURRENT_LLM.value.send()
-        messages.value = cast_to_message_list(
-            [*messages.value, {"role": "assistant", "content": ""}]
-        )
-        if OPENAI_AVAILABLE and isinstance(CURRENT_LLM.value, OpenAI):
-            for chunk in response:
-                if chunk.choices[0].finish_reason == "stop":
-                    return
-                add_chunk_to_ai_message(chunk.choices[0].delta.content)  # type: ignore
-        if ANTHROPIC_AVAILABLE and isinstance(CURRENT_LLM.value, Anthropic):
-            for chunk in response:
-                if hasattr(chunk, "delta") and isinstance(chunk.delta, TextDelta):
-                    msg = chunk.delta.text
-                    add_chunk_to_ai_message(msg)
-        if OLLAMA_AVAILABLE and isinstance(CURRENT_LLM.value, Ollama):
-            for chunk in response:
-                if chunk:
-                    add_chunk_to_ai_message(json.loads(chunk)["message"]["content"])
+        response = CURRENT_LLM.value.stream_chat(messages=messages.value)
+        messages.value = [
+            *messages.value,
+            {"role": "assistant", "content": ""},
+        ]
+        for chunk in response:
+            if chunk:
+                add_chunk_to_ai_message(chunk.delta)
 
     task = solara.lab.use_task(call_llm, dependencies=[user_message_count])  # type: ignore
 
@@ -433,37 +348,45 @@ def Page():
     ):
         ModelRow()
         with solara.lab.ChatBox():
-            for index, item in enumerate(CURRENT_LLM.value.messages):
-                is_last = index == len(CURRENT_LLM.value.messages) - 1
-                if item.role == "system":
+            for index, item in enumerate(messages.value):
+                is_last = index == len(messages.value) - 1
+                if item["role"] == "system":
+                    continue
+                if item["content"] == "":
                     continue
                 with solara.Column(gap="0px"):
                     with solara.Div(style={"background-color": "rgba(0,0,0.3, 0.06)"}):
                         with solara.lab.ChatMessage(
-                            user=item.role == "user",
+                            user=item["role"] == "user",
                             avatar=False,
-                            name="Aithena" if item.role == "assistant" else "User",
+                            name="Aithena" if item["role"] == "assistant" else "User",
                             color=(
                                 "rgba(0,0,0, 0.06)"
-                                if item.role == "assistant"
+                                if item["role"] == "assistant"
                                 else "#ff991f"
                             ),
                             avatar_background_color=(
-                                "primary" if item.role == "assistant" else None
+                                "primary" if item["role"] == "assistant" else None
                             ),
                             border_radius="20px",
                             style={
                                 "padding": "10px",
                             },
                         ):
-                            if EDIT_MODE.value and item.role == "assistant":
-                                EditableMessage(
-                                    item.content, index + 1
-                                )  # add 1 to index to account for prompt
+                            if EDIT_MODE.value and item["role"] == "assistant":
+                                EditableMessage(item["content"], index)
                             else:
-                                solara.Markdown(item.content)
-                    if item.role == "assistant":
-                        ModelLabel(index, CURRENT_LLM.value.name, task, is_last)
+                                solara.Markdown(item["content"])
+                    if item["role"] == "assistant":
+                        if CURRENT_LLM.value.class_name == "azure_openai_llm":
+                            ModelLabel(
+                                index,
+                                f"azure/{CURRENT_LLM.value.engine}",
+                                task,
+                                is_last,
+                            )
+                        else:
+                            ModelLabel(index, CURRENT_LLM.value.model, task, is_last)
         solara.lab.ChatInput(
             send_callback=user_send,
             disabled=task.pending,
