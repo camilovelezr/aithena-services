@@ -25,6 +25,8 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(messa
                     level=logging.DEBUG)
 logger = logging.getLogger(__file__)
 
+logger.info(f"attempt to connect to ollama at: {host}")
+
 # create a single client
 async_client = ollama.AsyncClient(host)
 client = ollama.Client(host)

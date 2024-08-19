@@ -1,6 +1,8 @@
 """Environment Variable Configuration for Aithena Services."""
 
 import os
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv(), override=True)
 
 OPENAI_KEY_ENV = os.getenv("OPENAI_API_KEY", None)
 OLLAMA_HOST_ENV = os.getenv("OLLAMA_HOST", None)
@@ -23,6 +25,7 @@ AZURE_OPENAI_ENV_DICT = {
 
 OPENAI_AVAILABLE = OPENAI_KEY_ENV is not None
 OLLAMA_AVAILABLE = OLLAMA_HOST_ENV is not None
+
 AZURE_OPENAI_AVAILABLE = (
     (AZURE_OPENAI_KEY_ENV is not None)
     and (AZURE_OPENAI_ENDPOINT_ENV is not None)

@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "chatbot-dash"
+version = "0.1.0"
+description = ""
+authors = ["Camilo Velez <camilo.velez@axleinfo.com>, Antoine Gerardin <antoine.gerardin@nextonicsolutions.com>"]
+readme = "README.md"
+packages = [{include = "chatbot_dash", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aithena-services= {path="..", develop=true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+

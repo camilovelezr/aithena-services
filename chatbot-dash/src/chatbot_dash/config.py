@@ -1,9 +1,23 @@
+import logging
 from pathlib import Path
 from aithena_services.envvars import (
     AZURE_OPENAI_AVAILABLE,
     OLLAMA_AVAILABLE,
     OPENAI_AVAILABLE,
 )
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+)
+
+def get_logger(file = "", log_level = logging.DEBUG):
+    logger = logging.getLogger(file)
+    logger.setLevel(log_level)
+    return logger
+
+logger = get_logger(__file__)
+
 
 if AZURE_OPENAI_AVAILABLE:
     from aithena_services.envvars import AZURE_OPENAI_MODEL_ENV
@@ -55,3 +69,7 @@ If you ask a question, always include a question mark.
 Do not introduce yourself to user if user does not ask for it.
 Never explain to user how your answers are.
 """
+
+logger.info(LLMS_AVAILABLE)
+
+

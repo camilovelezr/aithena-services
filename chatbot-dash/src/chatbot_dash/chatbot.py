@@ -1,27 +1,22 @@
 """Chatbot multiple models."""
 
 # pylint: disable=E1129, E1120, C0116, C0103
-import json
-from copy import copy
-from pathlib import Path
-
-import reacton.ipyvuetify as rv
 import solara
 import solara.lab
+from llama_index.core.llms.llm import LLM
+from chatbot_dash.config import FILE_PATH, LLM_DICT, PROMPT
+from chatbot_dash.components.chat_options import ChatOptions
+from chatbot_dash.components.editable_message import EditableMessage
+from chatbot_dash.components.model_info import ModelInfo
+from chatbot_dash.config import get_logger
 
+logger = get_logger(__file__)
 
-from .components.chat_options import ChatOptions
-from .config import FILE_PATH, LLM_DICT, PROMPT
-
-
-"""history will be erased on model change."""
+"""when set, history will be erased on model change."""
 reset_on_change: solara.Reactive[bool] = solara.Reactive(False)
-"""Make all assistant reponse editable."""
-# TODO not sure how useful it is, as the previous conversation may
-# become inconsitent.
+"""when set, ake all assistant reponse editable."""
+# TODO CHECK rationale. Not sure how useful it is, as the previous conversation may become inconsitent.
 edit_mode: solara.Reactive[bool] = solara.Reactive(False)
-
-# global state : we kept track of message history
 # we initialize history with the system prompt
 messages: solara.Reactive[list[dict]] = solara.reactive(
     ([{"role": "system", "content": PROMPT}])
@@ -30,116 +25,14 @@ edit_index = solara.reactive(None)
 current_edit_value = solara.reactive("")
 model_labels: solara.Reactive[dict[int, str]] = solara.reactive({})
 is_menu_open = solara.reactive(False)
-
-"""LLM currently selected."""
-llm_name: solara.Reactive[str] = (
+current_llm_name: solara.Reactive[str] = (
     solara.reactive("llama3.1")
     if "llama3.1" in LLM_DICT
     else solara.reactive(list(LLM_DICT.keys())[0])
 )
-# LLM selected 
 current_llm: solara.Reactive[LLM] = solara.reactive(  # type: ignore
-    LLM_DICT[llm_name.value]
+    LLM_DICT[current_llm_name.value]
 )
-user_message_count = len([m for m in messages.value if m["role"] == "user"])
-
-
-@solara.component
-def EditableMessage(message, index):
-    """Display edit options for a 'message' at a given 'index'."""
-
-    def update_message_history():
-        """Update the message history with the edited message."""
-        updated_messages = copy(messages.value)
-        updated_messages[edit_index.value] = {
-            "role": "assistant",
-            "content": current_edit_value.value,
-        }
-        messages.set(updated_messages)
-        edit_index.set(None)
-
-    def handle_edit():
-        """Handle click on the edit button for a given message."""
-        edit_index.set(index)
-        current_edit_value.set(messages.value[index]["content"])
-
-    with solara.Column() as main:
-        
-        if edit_index.value == index:
-            # The message is currently being edited.
-            solara.MarkdownEditor(
-                value=current_edit_value.value, on_value=current_edit_value.set
-            )
-            solara.Button(
-                "Done",
-                on_click=update_message_history,
-                style={
-                    "position": "center",
-                },
-            )
-        else:
-            # we provide option to edit the message.
-            solara.Markdown(message)
-            solara.Button(
-                "EDIT",
-                on_click=handle_edit,
-                style={"position": "center"},
-            )
-            
-        return main
-
-@solara.component
-def ModelInfo(index: int, model: str, task, is_last: bool = False):
-    """Display LLM info.
-    Used to label LLM response.
-    """
-    
-    # do not show label while we are streaming the last message response. 
-    if not is_last or not task.pending:
-        with solara.Row(
-            gap="0px",
-            style={
-                "position": "relative",
-                "width": "fit-content",
-                "top": "-2",
-                "height": "auto",
-            },
-        ):
-            with solara.Div(
-                style={
-                    "position": "relative",
-                    "width": "fit-content",
-                }
-            ):
-                ModelLabel(index, model, task, is_last)
-                rv.Btn(
-                    children=[
-                        rv.Icon(
-                            children=["mdi-creation"],
-                        )
-                    ],
-                    icon=True,
-                )
-
-@solara.component
-def ModelLabel(index: int, model: str, task, is_last: bool = False):
-    """Display the model name."""
-    # TODO REFACTOR AGAIN
-    if index not in model_labels.value:
-        model_labels.value.update({index: model})
-    model_ = model_labels.value[index] if index in model_labels.value else model
-    solara.Text(
-        model_,
-        style={
-            "color": "rgba(0,0,0, 0.5)",
-            "font-size": "0.8em",
-            "position": "relative",
-            "height": "fit-content",
-            "width": "fit-content",
-            "padding-left": "10px",
-        },
-    )
-
 
 @solara.component
 def Page():
@@ -147,27 +40,37 @@ def Page():
     solara.Style(FILE_PATH.joinpath("style.css")) 
     solara.Title("Aithena")
 
-    def user_send(message):
-        """"Update the message history when user send a new message."""
+    # updated at each page refresh
+    user_message_count = len([m for m in messages.value if m["role"] == "user"])
+
+    def create_user_message(message):
+        """"Update the message history with a new user message."""
         messages.value = [
             *messages.value,
             {"role": "user", "content": message},
         ]
+        logger.debug(f"create a new user message: {message}")
 
     def call_llm():
-        """Send history to the llm and update it with the response."""
+        """Send chat history to the llm and update chat history with the response."""
         if user_message_count == 0:
             return
+        logger.debug("calling llm with chat history")
+        
         response = current_llm.value.stream_chat(messages=messages.value)
+
+        logger.debug("received a response from the llm, streaming...")
         messages.value = [
             *messages.value,
             {"role": "assistant", "content": ""},
         ]
         for chunk in response:
             if chunk:
-                add_chunk_to_ai_message(chunk.delta)
+                update_response(chunk.delta)
 
-    def add_chunk_to_ai_message(chunk: str):
+        logger.debug("response completed...")
+
+    def update_response(chunk: str):
         """Add next chunk to current llm response.
         This is needed when we are using LLMs in stream mode.
         """
@@ -179,7 +82,7 @@ def Page():
             },
         ]
 
-    # call the llm with the message history whenever the context has changed
+    # call the llm with the message history whenever a new user message is created
     task = solara.lab.use_task(call_llm, dependencies=[user_message_count])  # type: ignore
 
     with solara.Column(
@@ -191,7 +94,9 @@ def Page():
             "overflow-y": "auto",
         },
     ):
-        ChatOptions(llm_name, messages, edit_mode, reset_on_change)
+        ChatOptions(current_llm_name, messages, edit_mode, reset_on_change)
+
+        solara.ProgressLinear(task.pending)
 
         with solara.lab.ChatBox():
             """Display message history."""
@@ -226,24 +131,28 @@ def Page():
                             },
                         ):
                             if edit_mode.value and item["role"] == "assistant":
-                                EditableMessage(item["content"], index)
+                                EditableMessage(messages, item["content"], index, edit_index, current_edit_value)
                             else:
                                 solara.Markdown(item["content"])
+
                     if item["role"] == "assistant":
                         """display the model name under the llm response."""
+                        # TODO review that
                         if current_llm.value.class_name == "azure_openai_llm":
                             ModelInfo(
+                                model_labels,
                                 index,
                                 f"azure/{current_llm.value.engine}",
                                 task,
                                 is_last,
                             )
                         else:
-                            ModelInfo(index, current_llm.value.model, task, is_last)
+                            ModelInfo(model_labels, index, current_llm.value.model, task, is_last)
+
 
         """Anchor the chat input at the bottom of the screen."""
         solara.lab.ChatInput(
-            send_callback=user_send,
+            send_callback=create_user_message,
             disabled=task.pending,
             style={
                 "position": "fixed",
