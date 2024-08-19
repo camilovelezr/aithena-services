@@ -30,9 +30,6 @@ current_llm_name: solara.Reactive[str] = (
     if "llama3.1" in LLM_DICT
     else solara.reactive(list(LLM_DICT.keys())[0])
 )
-current_llm: solara.Reactive[LLM] = solara.reactive(  # type: ignore
-    LLM_DICT[current_llm_name.value]
-)
 
 @solara.component
 def Page():
@@ -42,6 +39,13 @@ def Page():
 
     # updated at each page refresh
     user_message_count = len([m for m in messages.value if m["role"] == "user"])
+
+    current_llm: solara.Reactive[LLM] = solara.reactive(  # type: ignore
+        LLM_DICT[current_llm_name.value]
+    )
+
+    logger.info(f"current model name: {current_llm_name}")
+    logger.info(f"current model: {current_llm}")
 
     def create_user_message(message):
         """"Update the message history with a new user message."""

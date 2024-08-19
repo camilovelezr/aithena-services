@@ -38,7 +38,6 @@ def ModelInfo(model_labels, index: int, model: str, task, is_last: bool = False)
 @solara.component
 def ModelLabel(model_labels, index: int, model: str, task, is_last: bool = False):
     """Display the model name."""
-    # TODO REFACTOR AGAIN
     if index not in model_labels.value:
         model_labels.value.update({index: model})
     model_ = model_labels.value[index] if index in model_labels.value else model
