@@ -9,81 +9,17 @@ import reacton.ipyvuetify as rv
 import solara
 import solara.lab
 
-from aithena_services.envvars import (
-    AZURE_OPENAI_AVAILABLE,
-    OLLAMA_AVAILABLE,
-    OPENAI_AVAILABLE,
-)
 
-if AZURE_OPENAI_AVAILABLE:
-    from aithena_services.envvars import AZURE_OPENAI_MODEL_ENV
-    from aithena_services.llms import AzureOpenAI
-if OPENAI_AVAILABLE:
-    from aithena_services.llms import OpenAI
-if OLLAMA_AVAILABLE:
-    from aithena_services.llms import Ollama
-
-from llama_index.core.llms.llm import LLM
-
-FILE_PATH = Path(__file__).parent.absolute()
-
-# keep track of all available models
-LLMS_AVAILABLE = []
-if AZURE_OPENAI_AVAILABLE:
-    LLMS_AVAILABLE.append(f"azure/{AZURE_OPENAI_MODEL_ENV}")
-if OPENAI_AVAILABLE:
-    LLMS_AVAILABLE.extend(OpenAI.list_models())
-if OLLAMA_AVAILABLE:
-    LLMS_AVAILABLE.extend(Ollama.list_models())
-
-
-def create_llm(name: str):
-    """Create a model client for a given model configuration
-    Configuration are defined through environment variables in aithena services.
-    ."""
-    if AZURE_OPENAI_AVAILABLE and name.startswith("azure/"):
-        return AzureOpenAI()
-    if OPENAI_AVAILABLE and name in OpenAI.list_models():
-        return OpenAI(model=name)
-    if OLLAMA_AVAILABLE and name in Ollama.list_models():
-        return Ollama(model=name)
-
-
-"""Retrieve all available models.
-TODO this should probably be part of the services API
-since aithena-services act as a gateway to all models.
-"""
-LLM_DICT = {name: create_llm(name) for name in LLMS_AVAILABLE}
-
-
-"""LLM currently selected."""
-LLM_NAME: solara.Reactive[str] = (
-    solara.reactive("llama3.1")
-    if "llama3.1" in LLM_DICT
-    else solara.reactive(list(LLM_DICT.keys())[0])
-)
+from .components.chat_options import ChatOptions
+from .config import FILE_PATH, LLM_DICT, PROMPT
 
 
 """history will be erased on model change."""
-RESET_ON_CHANGE: solara.Reactive[bool] = solara.Reactive(False)
-
-
+reset_on_change: solara.Reactive[bool] = solara.Reactive(False)
 """Make all assistant reponse editable."""
 # TODO not sure how useful it is, as the previous conversation may
 # become inconsitent.
-EDIT_MODE: solara.Reactive[bool] = solara.Reactive(False)
-
-PROMPT = """
-You are a helpful assistant named Aithena.
-Respond to users with witty, entertaining, and thoughtful answers.
-User wants short answers, maximum five sentences.
-If user asks info about yourself or your architecture,
-respond with info about your LLM model and its capabilities.
-Do not finish every sentence with a question.
-If you ask a question, always include a question mark.
-Do not introduce yourself to user if user does not ask for it.
-Never explain to user how your answers are.
-"""
+edit_mode: solara.Reactive[bool] = solara.Reactive(False)
 
 # global state : we kept track of message history
 # we initialize history with the system prompt
@@ -94,75 +30,19 @@ edit_index = solara.reactive(None)
 current_edit_value = solara.reactive("")
 model_labels: solara.Reactive[dict[int, str]] = solara.reactive({})
 is_menu_open = solara.reactive(False)
+
+"""LLM currently selected."""
+llm_name: solara.Reactive[str] = (
+    solara.reactive("llama3.1")
+    if "llama3.1" in LLM_DICT
+    else solara.reactive(list(LLM_DICT.keys())[0])
+)
 # LLM selected 
 current_llm: solara.Reactive[LLM] = solara.reactive(  # type: ignore
-    LLM_DICT[LLM_NAME.value]
+    LLM_DICT[llm_name.value]
 )
 user_message_count = len([m for m in messages.value if m["role"] == "user"])
 
-@solara.component
-def ChatOptions():
-    """Chat Options Component.
-    
-    We can currently:
-    - select a specific llms depending on configured sources.
-    - edit llms responses
-    - reset history on model change.
-    """
-
-    def change_llm_name(*args):
-        """Change the selected LLM."""
-        LLM_NAME.value = args[-1]
-        if RESET_ON_CHANGE.value:
-            messages.value = [{"role": "system", "content": PROMPT}]
-            return
-        return
-
-
-    def change_reset_value(v):
-        """Change the reset_on_change value."""
-        RESET_ON_CHANGE.value = v
-
-
-    def change_edit_mode_value(v):
-        """Change the edit_mode value."""
-        EDIT_MODE.value = v
-
-    # anchor at the top-level
-    with solara.Row(
-        style={
-            "position": "relative",
-            "top": "0",
-            "width": "100%",
-            "height": "38px",
-            "padding-left": "12px",
-            "padding-right": "12px",
-            "padding-top": "15px",
-            # "padding": "5px",
-        },
-    ):
-        auto_complete = rv.Autocomplete(
-            label="Model", dense=True, items=LLMS_AVAILABLE, value=LLM_NAME.value
-        )
-        rv.use_event(auto_complete, "change", change_llm_name)
-        solara.Switch(
-            label="Reset on Change",
-            value=False,
-            on_value=change_reset_value,
-            style={
-                "position": "relative",
-                "top": "-8px",
-            },
-        )
-        solara.Switch(
-            label="Edit Mode",
-            value=False,
-            on_value=change_edit_mode_value,
-            style={
-                "position": "relative",
-                "top": "-8px",
-            },
-        )
 
 @solara.component
 def EditableMessage(message, index):
@@ -311,7 +191,7 @@ def Page():
             "overflow-y": "auto",
         },
     ):
-        ChatOptions()
+        ChatOptions(llm_name, messages, edit_mode, reset_on_change)
 
         with solara.lab.ChatBox():
             """Display message history."""
@@ -345,7 +225,7 @@ def Page():
                                 "padding": "10px",
                             },
                         ):
-                            if EDIT_MODE.value and item["role"] == "assistant":
+                            if edit_mode.value and item["role"] == "assistant":
                                 EditableMessage(item["content"], index)
                             else:
                                 solara.Markdown(item["content"])
