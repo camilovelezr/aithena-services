@@ -14,7 +14,7 @@ logger = get_logger(__file__)
 
 """when set, history will be erased on model change."""
 reset_on_change: solara.Reactive[bool] = solara.Reactive(False)
-"""when set, ake all assistant reponse editable."""
+"""when set, make all assistant response editable."""
 # TODO CHECK rationale. Not sure how useful it is, as the previous conversation may become inconsitent.
 edit_mode: solara.Reactive[bool] = solara.Reactive(False)
 # we initialize history with the system prompt
@@ -115,7 +115,7 @@ def Page():
                         """Display a message.
                         NOTE ChatMessage work as a container, and has a children component.
                         For editable message, we pass on our component that will replace the 
-                        default Markdown component that just display the message content.
+                        default Markdown component that displays the message content.
                         """
                         with solara.lab.ChatMessage(
                             user=item["role"] == "user",
@@ -141,7 +141,6 @@ def Page():
 
                     if item["role"] == "assistant":
                         """display the model name under the llm response."""
-                        # TODO review that
                         if current_llm.value.class_name == "azure_openai_llm":
                             ModelInfo(
                                 model_labels,
