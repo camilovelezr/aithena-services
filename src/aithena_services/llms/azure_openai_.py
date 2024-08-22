@@ -7,16 +7,22 @@ from typing import Any, Sequence
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaIndexAzureOpenAI
 
 from aithena_services.envvars import AZURE_OPENAI_ENV_DICT
-from aithena_services.llms.types import (
+from aithena_services.llms.types import Message
+from aithena_services.llms.types.base import (
+    AithenaLLM,
+    achataithena,
+    astreamchataithena,
+    chataithena,
+    streamchataithena,
+)
+from aithena_services.llms.types.response import (
     ChatResponse,
     ChatResponseAsyncGen,
     ChatResponseGen,
-    Message,
 )
-from aithena_services.llms.utils import check_and_cast_messages
 
 
-class AzureOpenAI(LlamaIndexAzureOpenAI):
+class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
     """Azure OpenAI LLMs.
 
     To use this, you must first deploy a model on Azure OpenAI.
@@ -32,59 +38,83 @@ class AzureOpenAI(LlamaIndexAzureOpenAI):
 
     Args:
         model: Name of the model (e.g. `gpt-4o-mini`)
-        engine: This will correspond to the custom name you chose
+        deployment: This will correspond to the custom name you chose
             for your deployment when you deployed a model.
+            Alias: `engine`.
 
     """
 
+    @staticmethod
+    def list_models() -> list[str]:
+        """List available models/deployments in Azure OpenAI.
+
+        This method is not implemented in Azure OpenAI.
+        The API calls needed for this, require elevated permissions
+        and are not part of Azure OpenAI REST API.
+        """
+        raise NotImplementedError(
+            "list_models() is not yet implemented in Azure OpenAI."
+        )
+
     def __init__(self, **kwargs: Any):
         kwargs["api_key"] = AZURE_OPENAI_ENV_DICT["api_key"]
-        kwargs["azure_endpoint"] = AZURE_OPENAI_ENV_DICT["azure_endpoint"]
+        kwargs["azure_endpoint"] = AZURE_OPENAI_ENV_DICT["endpoint"]
         kwargs["api_version"] = AZURE_OPENAI_ENV_DICT["api_version"]
-        if AZURE_OPENAI_ENV_DICT["model"] is not None and "model" not in kwargs:
-            kwargs["model"] = AZURE_OPENAI_ENV_DICT["model"]
-        if AZURE_OPENAI_ENV_DICT["engine"] is not None and "engine" not in kwargs:
-            kwargs["engine"] = AZURE_OPENAI_ENV_DICT["engine"]
+        if "deployment" in kwargs:
+            if "engine" in kwargs:
+                raise ValueError("Cannot specify both `deployment` and `engine`.")
+            kwargs["engine"] = kwargs["deployment"]
+            kwargs.pop("deployment")
         super().__init__(**kwargs)
 
+    @chataithena
     def chat(self, messages: Sequence[dict | Message], **kwargs: Any) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = super().chat(messages, **kwargs)
-        msg = Message(**llama_index_response.message.dict())
-        return llama_index_response.copy(update={"message": msg})
+        """Chat with a model in Azure OpenAI.
 
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().chat(messages, **kwargs)  # type: ignore
+
+    @streamchataithena
     def stream_chat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = super().stream_chat(messages, **kwargs)
+        """Stream chat with a model in Azure OpenAI.
 
-        def gen() -> ChatResponseGen:
+        Each response is a `ChatResponse` and has a `.delta`
+        attribute useful for incremental updates.
 
-            for response in llama_stream:
-                msg = Message(**response.message.dict())
-                yield response.copy(update={"message": msg})
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().stream_chat(messages, **kwargs)  # type: ignore
 
-        return gen()
-
-    async def astream_chat(
-        self, messages: Sequence[dict | Message], **kwargs: Any
-    ) -> ChatResponseAsyncGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = super().astream_chat(messages, **kwargs)
-
-        async def gen() -> ChatResponseAsyncGen:
-
-            async for response in await llama_stream:
-                msg = Message(**response.message.dict())
-                yield response.copy(update={"message": msg})
-
-        return gen()
-
+    @achataithena
     async def achat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = await super().achat(messages, **kwargs)
-        msg = Message(**llama_index_response.message.dict())
-        return llama_index_response.copy(update={"message": msg})
+        """Async chat with a model in Azure OpenAI.
+
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().achat(messages, **kwargs)  # type: ignore
+
+    @astreamchataithena
+    async def astream_chat(
+        self, messages: Sequence[dict | Message], **kwargs: Any
+    ) -> ChatResponseAsyncGen:
+        """Async stream chat with a model in Azure OpenAI.
+
+        Each response is a `ChatResponse` and has a `.delta`
+        attribute useful for incremental updates.
+
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().astream_chat(messages, **kwargs)  # type: ignore

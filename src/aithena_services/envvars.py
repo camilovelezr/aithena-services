@@ -1,43 +1,41 @@
 """Environment Variable Configuration for Aithena Services."""
 
 import os
-from dotenv import load_dotenv, find_dotenv
+
+from dotenv import find_dotenv, load_dotenv
+
 load_dotenv(find_dotenv(), override=True)
 
-OPENAI_KEY_ENV = os.getenv("OPENAI_API_KEY", None)
-OLLAMA_HOST_ENV = os.getenv("OLLAMA_HOST", None)
+OPENAI_KEY = os.getenv("OPENAI_API_KEY", None)
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", None)
+if isinstance(OLLAMA_HOST, str) and OLLAMA_HOST.endswith("/"):
+    OLLAMA_HOST = OLLAMA_HOST[:-1]
 
 # ----AzureOpenAI----
-# ---required---
-AZURE_OPENAI_KEY_ENV = os.environ.get("AZURE_OPENAI_API_KEY", None)
-AZURE_OPENAI_ENDPOINT_ENV = os.environ.get("AZURE_OPENAI_ENDPOINT", None)
-AZURE_OPENAI_API_VERSION_ENV = os.environ.get("AZURE_OPENAI_API_VERSION", None)
-# ---optional---
-AZURE_OPENAI_DEPLOYMENT_NAME_ENV = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
-AZURE_OPENAI_MODEL_ENV = os.environ.get("AZURE_OPENAI_MODEL", None)
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_API_KEY", None)
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", None)
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", None)
 AZURE_OPENAI_ENV_DICT = {
-    "api_key": AZURE_OPENAI_KEY_ENV,
-    "azure_endpoint": AZURE_OPENAI_ENDPOINT_ENV,
-    "api_version": AZURE_OPENAI_API_VERSION_ENV,
-    "model": AZURE_OPENAI_MODEL_ENV,
-    "engine": AZURE_OPENAI_DEPLOYMENT_NAME_ENV,
+    "api_key": AZURE_OPENAI_KEY,
+    "endpoint": AZURE_OPENAI_ENDPOINT,
+    "api_version": AZURE_OPENAI_API_VERSION,
 }
 
-OPENAI_AVAILABLE = OPENAI_KEY_ENV is not None
-OLLAMA_AVAILABLE = OLLAMA_HOST_ENV is not None
+OPENAI_AVAILABLE = OPENAI_KEY is not None
+OLLAMA_AVAILABLE = OLLAMA_HOST is not None
 
 AZURE_OPENAI_AVAILABLE = (
-    (AZURE_OPENAI_KEY_ENV is not None)
-    and (AZURE_OPENAI_ENDPOINT_ENV is not None)
-    and (AZURE_OPENAI_API_VERSION_ENV is not None)
+    (AZURE_OPENAI_KEY is not None)
+    and (AZURE_OPENAI_ENDPOINT is not None)
+    and (AZURE_OPENAI_API_VERSION is not None)
 )
 
 
 __all__ = [
     "OPENAI_AVAILABLE",
     "OLLAMA_AVAILABLE",
-    "OPENAI_KEY_ENV",
-    "OLLAMA_HOST_ENV",
+    "OPENAI_KEY",
+    "OLLAMA_HOST",
     "AZURE_OPENAI_AVAILABLE",
     "AZURE_OPENAI_ENV_DICT",
 ]

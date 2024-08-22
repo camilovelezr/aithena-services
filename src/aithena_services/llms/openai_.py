@@ -1,18 +1,24 @@
 """OpenAI Implementation based on LlamaIndex."""
 
 # pylint: disable=too-many-ancestors
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI  # type: ignore
 from openai import OpenAI as OpenAIClient
 
-from aithena_services.llms.types import (
+from aithena_services.llms.types import Message
+from aithena_services.llms.types.base import (
+    AithenaLLM,
+    achataithena,
+    astreamchataithena,
+    chataithena,
+    streamchataithena,
+)
+from aithena_services.llms.types.response import (
     ChatResponse,
     ChatResponseAsyncGen,
     ChatResponseGen,
-    Message,
 )
-from aithena_services.llms.utils import check_and_cast_messages
 
 
 def custom_sort_for_openai_models(name: str) -> tuple[int, str]:
@@ -36,59 +42,71 @@ def list_openai_models() -> list[str]:
 OPENAI_MODELS = list_openai_models()
 
 
-class OpenAI(LlamaIndexOpenAI):
+class OpenAI(LlamaIndexOpenAI, AithenaLLM):
     """OpenAI models."""
 
-    def __init__(
-        self, model: Optional[str] = None, **kwargs: Any
-    ):  # model Optional for better exception message
-        if not model:
+    def __init__(self, **kwargs: Any):
+        if "model" not in kwargs:
             raise ValueError(f"Model not specified. Available models: {OPENAI_MODELS}")
-        if model not in OPENAI_MODELS:
+        if kwargs["model"] not in OPENAI_MODELS:
             raise ValueError(
-                f"Model {model} not available. Available models: {OPENAI_MODELS}"
+                f"Model {kwargs['model']} not available. Available models: {OPENAI_MODELS}"
             )
-        super().__init__(model, **kwargs)
+        super().__init__(**kwargs)
 
     @staticmethod
     def list_models() -> list[str]:
         """List available OpenAI chat models."""
         return list_openai_models()
 
-    def chat(self, messages: Sequence, **kwargs: Any) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = super().chat(messages, **kwargs)
-        msg = Message(**llama_index_response.message.dict())
-        return llama_index_response.copy(update={"message": msg})
+    @chataithena
+    def chat(self, messages: Sequence[dict | Message], **kwargs: Any) -> ChatResponse:
+        """Chat with a model in OpenAI.
 
-    def stream_chat(self, messages: Sequence, **kwargs: Any) -> ChatResponseGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = super().stream_chat(messages, **kwargs)
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().chat(messages, **kwargs)  # type: ignore
 
-        def gen() -> ChatResponseGen:
+    @streamchataithena
+    def stream_chat(
+        self, messages: Sequence[dict | Message], **kwargs: Any
+    ) -> ChatResponseGen:
+        """Stream chat with a model in OpenAI.
 
-            for response in llama_stream:
-                msg = Message(**response.message.dict())
-                yield response.copy(update={"message": msg})
+        Each response is a `ChatResponse` and has a `.delta`
+        attribute useful for incremental updates.
 
-        return gen()
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().stream_chat(messages, **kwargs)  # type: ignore
 
+    @achataithena
+    async def achat(
+        self, messages: Sequence[dict | Message], **kwargs: Any
+    ) -> ChatResponse:
+        """Async chat with a model in OpenAI.
+
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().achat(messages, **kwargs)  # type: ignore
+
+    @astreamchataithena
     async def astream_chat(
-        self, messages: Sequence, **kwargs: Any
+        self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseAsyncGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = super().astream_chat(messages, **kwargs)
+        """Async stream chat with a model in OpenAI.
 
-        async def gen() -> ChatResponseAsyncGen:
+        Each response is a `ChatResponse` and has a `.delta`
+        attribute useful for incremental updates.
 
-            async for response in await llama_stream:
-                msg = Message(**response.message.dict())
-                yield response.copy(update={"message": msg})
-
-        return gen()
-
-    async def achat(self, messages: Sequence, **kwargs: Any) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = await super().achat(messages, **kwargs)
-        msg = Message(**llama_index_response.message.dict())
-        return llama_index_response.copy(update={"message": msg})
+        Args:
+            messages: entire list of message history, where last
+                message is the one to be responded to
+        """
+        return super().astream_chat(messages, **kwargs)  # type: ignore

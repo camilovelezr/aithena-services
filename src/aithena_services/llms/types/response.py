@@ -15,6 +15,15 @@ class ChatResponse(LlamaIndexChatResponse):
 
     message: Message  # type: ignore
 
+    @classmethod
+    def from_llamaindex(
+        cls, llama_index_response: LlamaIndexChatResponse
+    ) -> "ChatResponse":
+        """Create ChatResponse from LlamaIndex ChatResponse."""
+        msg = Message(**llama_index_response.message.dict())
+        li_ = llama_index_response.copy(update={"message": msg})
+        return cls(**li_.dict())
+
 
 ChatResponseGen = Generator[ChatResponse, None, None]
 ChatResponseAsyncGen = AsyncGenerator[ChatResponse, None]

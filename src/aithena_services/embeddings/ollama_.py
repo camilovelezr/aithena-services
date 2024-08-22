@@ -6,7 +6,7 @@ from typing import Any
 
 from llama_index.embeddings.ollama import OllamaEmbedding as LlamaIndexOllama
 
-from aithena_services.envvars import OLLAMA_HOST_ENV as OLLAMA_URL
+from aithena_services.envvars import OLLAMA_HOST as OLLAMA_URL
 
 
 class OllamaEmbedding(LlamaIndexOllama):

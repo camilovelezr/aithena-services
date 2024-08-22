@@ -5,9 +5,8 @@ from aithena_services.envvars import (
     OLLAMA_AVAILABLE,
     OPENAI_AVAILABLE,
 )
-from aithena_services.llms.types import Message
 
-__all__ = ["Message"]
+__all__ = []
 if OPENAI_AVAILABLE:
     from .openai_ import OpenAI
 
