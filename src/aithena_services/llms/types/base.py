@@ -30,8 +30,8 @@ def streamchataithena(method: Callable) -> Callable:
     def wrapper(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = method(self, messages, **kwargs)
+        messages_ = check_and_cast_messages(messages)
+        llama_stream = method(self, messages_, **kwargs)
 
         def gen() -> ChatResponseGen:
             for response in llama_stream:
@@ -49,8 +49,8 @@ def chataithena(method: Callable) -> Callable:
     def wrapper(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = method(self, messages, **kwargs)
+        messages_ = check_and_cast_messages(messages)
+        llama_index_response = method(self, messages_, **kwargs)
         return ChatResponse.from_llamaindex(llama_index_response)
 
     return wrapper
@@ -63,8 +63,8 @@ def astreamchataithena(method: Callable) -> Callable:
     async def wrapper(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseAsyncGen:
-        messages = check_and_cast_messages(messages)
-        llama_stream = method(self, messages, **kwargs)
+        messages_ = check_and_cast_messages(messages)
+        llama_stream = method(self, messages_, **kwargs)
 
         async def gen() -> ChatResponseAsyncGen:
             async for response in await llama_stream:
@@ -82,8 +82,8 @@ def achataithena(method: Callable) -> Callable:
     async def wrapper(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponse:
-        messages = check_and_cast_messages(messages)
-        llama_index_response = await method(self, messages, **kwargs)
+        messages_ = check_and_cast_messages(messages)
+        llama_index_response = await method(self, messages_, **kwargs)
         return ChatResponse.from_llamaindex(llama_index_response)
 
     return wrapper

@@ -23,7 +23,10 @@ FILE_PATH = Path(__file__).parent.absolute()
 # Do not introduce yourself to user if user does not ask for it.
 # Never explain to user how your answers are.
 # """
-PROMPT = """Pretend you are Albert Einstein and answer in two or three sentences each time."""
+PROMPT = """Pretend you are Albert Einstein, and keep a fun and conversational tone.
+You are extremely friendly and talkative.""".replace(
+    "\n", ""
+)
 
 MESSAGES = solara.reactive([{"role": "system", "content": PROMPT}])
 
@@ -52,17 +55,12 @@ def change_llm_name(set_llm_name, reset_on_change, set_model_labels, *args):
 edit_index = solara.reactive(None)
 current_edit_value = solara.reactive("")
 LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()
-LLMS_AVAILABLE = [llm for llm in LLMS_AVAILABLE if not "embed" in llm]  # simple filter
 
 CHAT_URL = "http://localhost:8000/chat/"
 
 
 def get_chat_url(model_: str) -> str:
     """Return the chat URL for the given model."""
-    if model_.startswith("azure"):
-        # ignore model, use env var
-        print("Using Azure OpenAI model")
-        return CHAT_URL + "azure/generate"
     return CHAT_URL + model_ + "/generate"
 
 

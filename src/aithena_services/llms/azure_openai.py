@@ -20,6 +20,7 @@ from aithena_services.llms.types.response import (
     ChatResponseAsyncGen,
     ChatResponseGen,
 )
+from aithena_services.llms.utils import check_and_cast_messages
 
 
 class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
@@ -57,14 +58,13 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
         )
 
     def __init__(self, **kwargs: Any):
-        kwargs["api_key"] = AZURE_OPENAI_ENV_DICT["api_key"]
-        kwargs["azure_endpoint"] = AZURE_OPENAI_ENV_DICT["endpoint"]
-        kwargs["api_version"] = AZURE_OPENAI_ENV_DICT["api_version"]
+        for arg in ["api_key", "azure_endpoint", "api_version"]:
+            if arg not in kwargs:
+                kwargs[arg] = AZURE_OPENAI_ENV_DICT[arg]
         if "deployment" in kwargs:
             if "engine" in kwargs:
                 raise ValueError("Cannot specify both `deployment` and `engine`.")
-            kwargs["engine"] = kwargs["deployment"]
-            kwargs.pop("deployment")
+            kwargs["engine"] = kwargs.pop("deployment")
         super().__init__(**kwargs)
 
     @chataithena
@@ -104,7 +104,6 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
         """
         return super().achat(messages, **kwargs)  # type: ignore
 
-    @astreamchataithena
     async def astream_chat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseAsyncGen:
@@ -117,4 +116,11 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
             messages: entire list of message history, where last
                 message is the one to be responded to
         """
-        return super().astream_chat(messages, **kwargs)  # type: ignore
+        messages = check_and_cast_messages(messages)
+        llama_stream = super().astream_chat(messages, **kwargs)
+
+        async def gen() -> ChatResponseAsyncGen:
+            async for response in await llama_stream:
+                yield ChatResponse.from_llamaindex(response)
+
+        return gen()

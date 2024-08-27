@@ -1,3 +1,4 @@
+# mypy: disable-error-code="import-untyped"
 """Ollama implementation based on LlamaIndex."""
 
 # pylint: disable=too-many-ancestors, W1203
@@ -21,6 +22,7 @@ from aithena_services.llms.types.response import (
     ChatResponseAsyncGen,
     ChatResponseGen,
 )
+from aithena_services.llms.utils import check_and_cast_messages
 
 logger = logging.getLogger("aithena_services.llms.ollama")
 
@@ -52,7 +54,8 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
     """
 
     def __init__(self, **kwargs: Any):
-        kwargs["base_url"] = OLLAMA_URL
+        if "base_url" not in kwargs:
+            kwargs["base_url"] = OLLAMA_URL
         logger.debug(f"Initalizing Ollama with kwargs: {kwargs}")
         super().__init__(**kwargs)
 
@@ -89,7 +92,6 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
         """
         return super().stream_chat(messages, **kwargs)  # type: ignore
 
-    @achataithena
     async def achat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponse:
@@ -99,13 +101,14 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
             messages: entire list of message history, where last
                 message is the one to be responded to
         """
-        return super().achat(messages, **kwargs)  # type: ignore
+        messages_ = check_and_cast_messages(messages)
+        llama_index_response = await super().achat(messages_, **kwargs)
+        return ChatResponse.from_llamaindex(llama_index_response)
 
-    @astreamchataithena
     async def astream_chat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponseAsyncGen:
-        """Async stream chat with a model in Ollama.
+        """Async stream chat with a model in Azure OpenAI.
 
         Each response is a `ChatResponse` and has a `.delta`
         attribute useful for incremental updates.
@@ -114,4 +117,11 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
             messages: entire list of message history, where last
                 message is the one to be responded to
         """
-        return super().astream_chat(messages, **kwargs)  # type: ignore
+        messages_ = check_and_cast_messages(messages)
+        llama_stream = super().astream_chat(messages_, **kwargs)
+
+        async def gen() -> ChatResponseAsyncGen:
+            async for response in await llama_stream:
+                yield ChatResponse.from_llamaindex(response)
+
+        return gen()

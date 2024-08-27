@@ -21,8 +21,9 @@ class ChatResponse(LlamaIndexChatResponse):
     ) -> "ChatResponse":
         """Create ChatResponse from LlamaIndex ChatResponse."""
         msg = Message(**llama_index_response.message.dict())
-        li_ = llama_index_response.copy(update={"message": msg})
-        return cls(**li_.dict())
+        li_ = llama_index_response.__dict__.copy()
+        li_["message"] = msg
+        return cls(**li_)
 
 
 ChatResponseGen = Generator[ChatResponse, None, None]
