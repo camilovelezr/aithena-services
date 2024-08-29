@@ -7,6 +7,8 @@ import requests
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv(), override=True)
+from llama_index.core.llms import ChatMessage
+
 # this is after dotenv in case .env for tests
 # defines different values for these variables
 from aithena_services.envvars import OLLAMA_AVAILABLE, OLLAMA_HOST
@@ -24,7 +26,7 @@ def ollama_imp():
     """Return Ollama object from Aithena Services."""
     if not OLLAMA_AVAILABLE:
         pytest.skip("Ollama not available")
-    from aithena_services.llms import Ollama
+    from aithena_services.llms.ollama import Ollama
 
     return Ollama
 
@@ -165,3 +167,14 @@ def test_ollama_llama31_args3(ollama_imp, query_1):
     )
 
     assert response1.message.content == response2.message.content
+
+
+@pytest.mark.asyncio(scope="session")
+async def test_chat_async_stream(ollama_imp):
+    """Async stream implementation of ollama chat integration."""
+    llm = ollama_imp
+    messages = [ChatMessage(**{"role": "user", "content": "Hi there!"})]
+    chunks = await llm.astream_chat(messages)
+    async for chunk in chunks:  # NOTE the async for iterating the async generator
+        print(chunk.delta, end="", flush=True)
+        # logger.info(f"output: {chunk.message.content}")

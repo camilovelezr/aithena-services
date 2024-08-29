@@ -68,7 +68,6 @@
             "model": "gpt-4o-mini",
             "backend": "azure",
             "config": {
-                "api_key": "superapi",
                 "endpoint": "https://abc.openai.azure.com/",
                 "api_version": "2024-02-01",
                 "deployment": "aithena"
@@ -88,7 +87,6 @@
             "model": "gpt-4o-mini",
             "backend": "openai",
             "config": {
-                "api_key": "superkey",
                 "url": null
             },
             "params": null

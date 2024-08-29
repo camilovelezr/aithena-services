@@ -1,18 +1,22 @@
 """Pydantic Models for Aithena-Services FastAPI REST Endpoints."""
 
 import json
+import os
 from pathlib import Path
 from typing import Literal, Optional, Self, Set, TypeVar
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
-CONFIG_PATH = Path(__file__).with_name("config.json")
+CONFIG_PATH_ = os.getenv("AITHENA_CONFIG_PATH", None)
+if CONFIG_PATH_ is None:
+    CONFIG_PATH = Path(__file__).with_name("config.json")
+else:
+    CONFIG_PATH = Path(CONFIG_PATH_)
 
 
 class AzureOpenAIConfig(BaseModel):
     """Azure OpenAI Config."""
 
-    api_key: str
     endpoint: HttpUrl
     api_version: str
     deployment: str
@@ -21,7 +25,6 @@ class AzureOpenAIConfig(BaseModel):
 class OpenAIConfig(BaseModel):
     """OpenAI Config."""
 
-    api_key: str
     api_base: Optional[HttpUrl] = None
 
 
@@ -93,5 +96,8 @@ def read_model_config():
 
 def init_models():
     """Initialize model list from config.json."""
+    if not CONFIG_PATH.exists():
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            f.write('{"models": []}')
     list_, names_ = read_model_config()
     return ModelsClass(models=list_, names=names_)

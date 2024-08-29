@@ -88,6 +88,7 @@ def add_model_to_list(model_dict: dict):
     """Add model to config"""
     try:
         add_model_to_config(model_dict)
+        Models.update()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -96,6 +97,7 @@ def add_model_to_list(model_dict: dict):
 def update_models():
     """Update models."""
     Models.update()
+    return "Updated models from config."
 
 
 @app.put("/chat/list/update/ollama")
@@ -104,6 +106,7 @@ def update_ollama_models():
 
     add_ollama_models_to_config()
     Models.update()
+    return "Ollama models updated."
 
 
 # @app.get("/chat/list/{platform}")
@@ -136,12 +139,10 @@ def get_client(model: ChatModel):
     if model.backend == "openai":
         return OpenAI(
             model=model.model,
-            api_key=model.config.api_key,
             api_base=model.config.api_base,
         )
     if model.backend == "azure":
         return AzureOpenAI(
-            api_key=model.config.api_key,
             azure_endpoint=str(model.config.endpoint),
             api_version=model.config.api_version,
             model=model.model,
