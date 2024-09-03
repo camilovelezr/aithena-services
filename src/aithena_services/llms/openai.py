@@ -8,13 +8,7 @@ from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI  # type: ignore
 from openai import OpenAI as OpenAIClient
 
 from aithena_services.llms.types import Message
-from aithena_services.llms.types.base import (
-    AithenaLLM,
-    achataithena,
-    astreamchataithena,
-    chataithena,
-    streamchataithena,
-)
+from aithena_services.llms.types.base import AithenaLLM, chataithena, streamchataithena
 from aithena_services.llms.types.response import (
     ChatResponse,
     ChatResponseAsyncGen,
@@ -88,7 +82,6 @@ class OpenAI(LlamaIndexOpenAI, AithenaLLM):
         """
         return super().stream_chat(messages, **kwargs)  # type: ignore
 
-    @achataithena
     async def achat(
         self, messages: Sequence[dict | Message], **kwargs: Any
     ) -> ChatResponse:
@@ -98,7 +91,9 @@ class OpenAI(LlamaIndexOpenAI, AithenaLLM):
             messages: entire list of message history, where last
                 message is the one to be responded to
         """
-        return super().achat(messages, **kwargs)  # type: ignore
+        messages_ = check_and_cast_messages(messages)
+        llama_index_response = await super().achat(messages_, **kwargs)
+        return ChatResponse.from_llamaindex(llama_index_response)
 
     async def astream_chat(
         self, messages: Sequence[dict | Message], **kwargs: Any

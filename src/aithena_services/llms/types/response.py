@@ -20,7 +20,7 @@ class ChatResponse(LlamaIndexChatResponse):
         cls, llama_index_response: LlamaIndexChatResponse
     ) -> "ChatResponse":
         """Create ChatResponse from LlamaIndex ChatResponse."""
-        msg = Message(**llama_index_response.message.dict())
+        msg = Message.from_llamaindex(llama_index_response.message)
         li_ = llama_index_response.__dict__.copy()
         li_["message"] = msg
         return cls(**li_)

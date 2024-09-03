@@ -178,6 +178,11 @@ class Message(RootModel):
             **self.additional_kwargs,
         )
 
+    @classmethod
+    def from_llamaindex(cls, llama_index_message: LlamaIndexMessage) -> "Message":
+        """Create Aithena Message from LlamaIndex ChatMessage."""
+        return cls(**llama_index_message.dict())
+
     def __repr__(self):
         return f"Message(role={self.root.role.value}, content={self.root.content})"
 

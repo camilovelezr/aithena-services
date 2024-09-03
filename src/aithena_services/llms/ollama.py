@@ -10,13 +10,7 @@ from llama_index.llms.ollama import Ollama as LlamaIndexOllama  # type: ignore
 
 from aithena_services.envvars import OLLAMA_HOST as OLLAMA_URL
 from aithena_services.llms.types import Message
-from aithena_services.llms.types.base import (
-    AithenaLLM,
-    achataithena,
-    astreamchataithena,
-    chataithena,
-    streamchataithena,
-)
+from aithena_services.llms.types.base import AithenaLLM, chataithena, streamchataithena
 from aithena_services.llms.types.response import (
     ChatResponse,
     ChatResponseAsyncGen,
