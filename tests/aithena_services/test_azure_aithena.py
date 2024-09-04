@@ -23,7 +23,7 @@ def test_azure_available():
     """Test AZURE_OPENAI_AVAILABLE from Aithena Services."""
     az_av = (
         AZURE_OPENAI_ENV_DICT["api_key"] is not None
-        and AZURE_OPENAI_ENV_DICT["endpoint"] is not None
+        and AZURE_OPENAI_ENV_DICT["azure_endpoint"] is not None
         and AZURE_OPENAI_ENV_DICT["api_version"] is not None
     )
     assert AZURE_OPENAI_AVAILABLE == az_av
@@ -34,7 +34,7 @@ def azure_imp():
     """Return azure object from Aithena Services."""
     if not AZURE_OPENAI_AVAILABLE:
         pytest.skip("azure not available")
-    from aithena_services.llms import AzureOpenAI  # type: ignore
+    from aithena_services.llms.azure_openai import AzureOpenAI  # type: ignore
 
     return AzureOpenAI
 
@@ -87,7 +87,7 @@ def test_azure_vs_llamaindex(azure_imp, math_question):
         model=MODEL,
         engine=DEPLOYMENT,
         api_key=AZURE_OPENAI_ENV_DICT["api_key"],
-        azure_endpoint=AZURE_OPENAI_ENV_DICT["endpoint"],
+        azure_endpoint=AZURE_OPENAI_ENV_DICT["azure_endpoint"],
         api_version=AZURE_OPENAI_ENV_DICT["api_version"],
     )
     response2 = gpt4o2.chat([ChatMessage(**x) for x in math_question])
@@ -150,7 +150,7 @@ def test_azure_args2(azure_imp, query_1):
     gpt4o = azure(model=MODEL, deployment=DEPLOYMENT, temperature=0, seed=12)
     response1 = gpt4o.chat(query_1)
     url = f"""
-    {AZURE_OPENAI_ENV_DICT["endpoint"]}openai/
+    {AZURE_OPENAI_ENV_DICT["azure_endpoint"]}openai/
     deployments/{DEPLOYMENT}/chat/
     completions?api-version={AZURE_OPENAI_ENV_DICT["api_version"]}
     """.replace(
@@ -199,7 +199,7 @@ def test_azure_args3(azure_imp, query_1):
         model=MODEL,
         engine=DEPLOYMENT,
         api_key=AZURE_OPENAI_ENV_DICT["api_key"],
-        azure_endpoint=AZURE_OPENAI_ENV_DICT["endpoint"],
+        azure_endpoint=AZURE_OPENAI_ENV_DICT["azure_endpoint"],
         api_version=AZURE_OPENAI_ENV_DICT["api_version"],
         temperature=0,
         seed=12,
@@ -209,7 +209,7 @@ def test_azure_args3(azure_imp, query_1):
         model=MODEL,
         engine=DEPLOYMENT,
         api_key=AZURE_OPENAI_ENV_DICT["api_key"],
-        azure_endpoint=AZURE_OPENAI_ENV_DICT["endpoint"],
+        azure_endpoint=AZURE_OPENAI_ENV_DICT["azure_endpoint"],
         api_version=AZURE_OPENAI_ENV_DICT["api_version"],
         temperature=0.89,
         seed=18,
