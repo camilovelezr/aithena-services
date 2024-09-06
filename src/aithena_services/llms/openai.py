@@ -48,8 +48,6 @@ class OpenAI(LlamaIndexOpenAI, AithenaLLM):
             raise ValueError(
                 f"Model {kwargs['model']} not available. Available models: {OPENAI_MODELS}"
             )
-        if kwargs["api_base"] is None:
-            kwargs.pop("api_base")
         super().__init__(**kwargs)
 
     @staticmethod

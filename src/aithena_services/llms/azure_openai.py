@@ -111,8 +111,8 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
             messages: entire list of message history, where last
                 message is the one to be responded to
         """
-        messages = check_and_cast_messages(messages)
-        llama_stream = super().astream_chat(messages, **kwargs)
+        messages_ = check_and_cast_messages(messages)
+        llama_stream = super().astream_chat(messages_, **kwargs)
 
         async def gen() -> ChatResponseAsyncGen:
             async for response in await llama_stream:

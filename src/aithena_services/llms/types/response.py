@@ -25,6 +25,10 @@ class ChatResponse(LlamaIndexChatResponse):
         li_["message"] = msg
         return cls(**li_)
 
+    def as_json(self) -> dict:
+        """Return ChatResponse as JSON."""
+        return self.__dict__
+
 
 ChatResponseGen = Generator[ChatResponse, None, None]
 ChatResponseAsyncGen = AsyncGenerator[ChatResponse, None]

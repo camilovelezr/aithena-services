@@ -1,17 +1,10 @@
 """Pydantic Models for Aithena-Services FastAPI REST Endpoints."""
 
 import json
-import os
-from pathlib import Path
 from typing import Literal, Optional, Self, Set, TypeVar
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
-
-CONFIG_PATH_ = os.getenv("AITHENA_CONFIG_PATH", None)
-if CONFIG_PATH_ is None:
-    CONFIG_PATH = Path(__file__).with_name("config.json")
-else:
-    CONFIG_PATH = Path(CONFIG_PATH_)
+from utils import CONFIG_PATH, _write_to_config_json
 
 
 class AzureOpenAIConfig(BaseModel):
@@ -65,8 +58,12 @@ class ChatModel(BaseModel):
             raise InvalidConfigError("Invalid config for Azure OpenAI model.")
         return self
 
+    def as_dict(self):
+        """Return model as dict."""
+        return json.loads(self.model_dump_json())
 
-class ModelsClass(BaseModel):
+
+class ChatModels(BaseModel):
     """Models class."""
 
     models: list[ChatModel]
@@ -78,26 +75,39 @@ class ModelsClass(BaseModel):
 
     def update(self):
         """Update from config."""
-        self.models, self.names = read_model_config()
+        self.models, self.names = read_chat_model_config()
 
     def get_model(self, name: str):
         """Get model by name."""
-        return [model for model in self.models if model.name == name][0]
+        filtered = [model for model in self.models if model.name == name]
+        if len(filtered) == 1:
+            return filtered[0]
+        else:
+            raise ValueError(f"Model {name} not found.")
+
+    def delete_model(self, name: str):
+        """Delete model by name."""
+        self.models = [model for model in self.models if model.name != name]
+        self.names = {model.name for model in self.models}
+        _write_to_config_json({"chat_models": [x.as_dict() for x in self.models]})
 
 
-def read_model_config():
-    """Read model list from config."""
+def read_chat_model_config():
+    """Read chat model list from config."""
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        model_list = json.load(f)["models"]
+        model_list = json.load(f)["chat_models"]
     models = [ChatModel(**model) for model in model_list]
     names = [model.name for model in models]
     return models, names
 
 
-def init_models():
+def init_chat_models():
     """Initialize model list from config.json."""
     if not CONFIG_PATH.exists():
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            f.write('{"models": []}')
-    list_, names_ = read_model_config()
-    return ModelsClass(models=list_, names=names_)
+            f.write('{"chat_models": [], "embed_models": []}')
+    list_, names_ = read_chat_model_config()
+    return ChatModels(models=list_, names=names_)
+
+
+# TODO: handle repeated keys => should not be allowed

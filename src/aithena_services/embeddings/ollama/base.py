@@ -13,5 +13,10 @@ class OllamaEmbedding(LlamaIndexOllama):
     """Ollama embeddings."""
 
     def __init__(self, **kwargs: Any):
-        kwargs["base_url"] = OLLAMA_URL
+        if "model_name" not in kwargs:
+            if "model" not in kwargs:
+                raise ValueError("Model not specified.")
+            kwargs["model_name"] = kwargs["model"]
+        if "base_url" not in kwargs:
+            kwargs["base_url"] = OLLAMA_URL
         super().__init__(**kwargs)
