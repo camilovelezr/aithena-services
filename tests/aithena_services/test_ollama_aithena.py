@@ -7,6 +7,7 @@ import requests
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv(), override=True)
+from llama_index.core.base.llms.types import CompletionResponse
 from llama_index.core.llms import ChatMessage
 
 # this is after dotenv in case .env for tests
@@ -172,9 +173,30 @@ def test_ollama_llama31_args3(ollama_imp, query_1):
 @pytest.mark.asyncio(scope="session")
 async def test_chat_async_stream(ollama_imp):
     """Async stream implementation of ollama chat integration."""
-    llm = ollama_imp
+    Ollama = ollama_imp
+    llama = Ollama(model="llama3.1", temperature=0, seed=12)
     messages = [ChatMessage(**{"role": "user", "content": "Hi there!"})]
-    chunks = await llm.astream_chat(messages)
+    chunks = await llama.astream_chat(messages)
     async for chunk in chunks:  # NOTE the async for iterating the async generator
         print(chunk.delta, end="", flush=True)
         # logger.info(f"output: {chunk.message.content}")
+
+
+def test_azure_completion(ollama_imp):
+    """Test completion in AzureOpenAI."""
+    Ollama = ollama_imp
+    llama = Ollama(model="llama3.1", temperature=0, seed=12)
+    response = llama.complete("What is the capital of France?")
+    assert isinstance(response, CompletionResponse)
+    assert isinstance(response.text, str)
+
+
+def test_azure_completion_stream(ollama_imp):
+    """Test completion stream in AzureOpenAI."""
+    Ollama = ollama_imp
+    llama = Ollama(model="llama3.1", temperature=0, seed=12)
+    response = llama.stream_complete("What is the capital of France?")
+    for r in response:
+        assert isinstance(r, CompletionResponse)
+        assert isinstance(r.text, str)
+        assert isinstance(r.delta, str)

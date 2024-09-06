@@ -10,6 +10,8 @@ import requests
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv(), override=True)
+from llama_index.core.base.llms.types import CompletionResponse
+
 # this is after dotenv in case .env for tests
 # defines different values for these variables
 from aithena_services.envvars import AZURE_OPENAI_AVAILABLE, AZURE_OPENAI_ENV_DICT
@@ -231,3 +233,23 @@ def test_azure_deployment_arg(azure_imp):
     gpt4o1 = azure(model=MODEL, deployment=DEPLOYMENT)
     gpt4o2 = azure(model=MODEL, engine=DEPLOYMENT)
     assert gpt4o1.engine == gpt4o2.engine
+
+
+def test_azure_completion(azure_imp):
+    """Test completion in AzureOpenAI."""
+    azure = azure_imp
+    gpt4o = azure(model=MODEL, deployment=DEPLOYMENT)
+    response = gpt4o.complete("What is the capital of France?")
+    assert isinstance(response, CompletionResponse)
+    assert isinstance(response.text, str)
+
+
+def test_azure_completion_stream(azure_imp):
+    """Test completion stream in AzureOpenAI."""
+    azure = azure_imp
+    gpt4o = azure(model=MODEL, deployment=DEPLOYMENT)
+    response = gpt4o.stream_complete("What is the capital of France?")
+    for r in response:
+        assert isinstance(r, CompletionResponse)
+        assert isinstance(r.text, str)
+        assert isinstance(r.delta, str)
