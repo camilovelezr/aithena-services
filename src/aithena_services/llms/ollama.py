@@ -48,7 +48,7 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
     """
 
     def __init__(self, **kwargs: Any):
-        if "base_url" not in kwargs:
+        if "base_url" not in kwargs or kwargs["base_url"] is None:
             kwargs["base_url"] = OLLAMA_URL
         logger.debug(f"Initalizing Ollama with kwargs: {kwargs}")
         super().__init__(**kwargs)
@@ -56,10 +56,11 @@ class Ollama(LlamaIndexOllama, AithenaLLM):
     @staticmethod
     def list_models(url: str = OLLAMA_URL) -> list[str]:  # type: ignore
         """List available Ollama models."""
-        return [
+        r = [
             x["name"]
             for x in requests.get(url + "/api/tags", timeout=40).json()["models"]
         ]
+        return [x for x in r if "embed" not in x]
 
     @chataithena
     def chat(self, messages: Sequence[dict | Message], **kwargs: Any) -> ChatResponse:

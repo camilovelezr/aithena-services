@@ -33,10 +33,17 @@ DIRECT_GPT_4O_ADD = {
     "config": {},
     "params": None,
 }
+EMBED_NOMIC_ADD = {
+    "name": "testnomic12",
+    "model": "nomic-embed-text",
+    "backend": "ollama",
+    "config": {},
+    "params": None,
+}
 
 
 def test_update_chat_models():
-    """Test update models from config."""
+    """Test update chat models from config."""
     res = requests.put(URL + "/chat/list/update", timeout=20).json()
     assert res == {"status": "success"}
 
@@ -66,6 +73,41 @@ def test_delete_chat_model():
         requests.post(URL + "/chat/list/add", json=DIRECT_GPT_4O_ADD, timeout=20)
     res = requests.delete(
         URL + "/chat/list/delete/testinggpt4o12", json=DIRECT_GPT_4O_ADD, timeout=20
+    ).json()
+    assert res == {"status": "success"}
+
+
+def test_update_embed_models():
+    """Test update embed models from config."""
+    res = requests.put(URL + "/embed/list/update", timeout=20).json()
+    assert res == {"status": "success"}
+
+
+def test_list_embed_models():
+    """Test list embed models."""
+    res = requests.get(URL + "/embed/list", timeout=20).json()
+    assert isinstance(res, list)
+
+
+def test_add_embed_model():
+    """Test add embed model."""
+    if EMBED_NOMIC_ADD["name"] in requests.get(URL + "/embed/list", timeout=20).json():
+        EMBED_NOMIC_ADD["name"] = "testnomic12" + str(random.randint(1, 100))
+    res = requests.post(
+        URL + "/embed/list/add", json=EMBED_NOMIC_ADD, timeout=20
+    ).json()
+    assert res == {"status": "success"}
+
+
+def test_delete_embed_model():
+    """Test delete embed model."""
+    if (
+        EMBED_NOMIC_ADD["name"]
+        not in requests.get(URL + "/embed/list", timeout=20).json()
+    ):
+        requests.post(URL + "/embed/list/add", json=EMBED_NOMIC_ADD, timeout=20)
+    res = requests.delete(
+        URL + "/embed/list/delete/testnomic12", json=EMBED_NOMIC_ADD, timeout=20
     ).json()
     assert res == {"status": "success"}
 
@@ -219,7 +261,7 @@ def test_azure_embed_str():
         pytest.skip("No azure models available")
     model_ = requests.get(URL + "/embed/list/azure", timeout=20).json()[0]
     res = requests.post(
-        URL + f"/embed/text/{model_}",
+        URL + f"/embed/{model_}/generate",
         json="This is a test",
         timeout=20,
         stream=False,

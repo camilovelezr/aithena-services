@@ -20,6 +20,7 @@ llama-index-embeddings-ollama = "^0.3.0"
 llama-index-llms-openai = "^0.2.0"
 llama-index-llms-ollama = "^0.3.0"
 llama-index-llms-azure-openai = "^0.2.0"
+typing-extensions = "^4.12.2"
 
 
 [tool.poetry.group.dev.dependencies]

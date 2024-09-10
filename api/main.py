@@ -4,12 +4,19 @@
 # pylint: disable=W1203, C0412
 
 import json
+from typing import Optional
 
 from chat_models import ChatModel, init_chat_models
 from embed_models import EmbedModel, init_embed_models
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from funcs import add_chat_model_to_config, add_ollama_models_to_config
+from funcs import (
+    add_chat_model_to_config,
+    add_embed_model_to_config,
+    update_ollama_chat,
+    update_ollama_embed,
+)
+from pydantic import HttpUrl
 
 from aithena_services.envvars import (
     AZURE_OPENAI_AVAILABLE,
@@ -93,6 +100,20 @@ def list_embed_models_by_platform(platform: str):
     return [model.name for model in EmbedModels.filter_models(platform)]
 
 
+@app.put("/chat/list/update")
+def update_chat_models():
+    """Update chat models."""
+    ChatModels.update()
+    return {"status": "success"}
+
+
+@app.put("/embed/list/update")
+def update_embed_models():
+    """Update embed models."""
+    EmbedModels.update()
+    return {"status": "success"}
+
+
 @app.post("/chat/list/add")
 def add_chat_model_to_list(model_dict: dict):
     """Add model to config"""
@@ -105,9 +126,21 @@ def add_chat_model_to_list(model_dict: dict):
     return {"status": "success"}
 
 
+@app.post("/embed/list/add")
+def add_embed_model_to_list(model_dict: dict):
+    """Add model to config"""
+    try:
+        add_embed_model_to_config(model_dict)
+        EmbedModels.update()
+    except Exception as exc:
+        print(exc.__class__)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "success"}
+
+
 @app.delete("/chat/list/delete/{model}")
-def delete_model_from_list(model: str):
-    """Delete model from config."""
+def delete_chat_model_from_list(model: str):
+    """Delete chat model from config."""
     if model not in ChatModels.names:
         raise HTTPException(status_code=400, detail="Model not found.")
     try:
@@ -119,20 +152,43 @@ def delete_model_from_list(model: str):
     return {"status": "success"}
 
 
-@app.put("/chat/list/update")
-def update_models():
-    """Update models."""
-    ChatModels.update()
+@app.delete("/embed/list/delete/{model}")
+def delete_embed_model_from_list(model: str):
+    """Delete embed model from config."""
+    if model not in EmbedModels.names:
+        raise HTTPException(status_code=400, detail="Model not found.")
+    try:
+        EmbedModels.delete_model(model)
+        EmbedModels.update()
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "success"}
+
+
+@app.put("/embed/list/update/ollama")
+def update_ollama_embed_models(url: Optional[str] = None, overwrite: bool = False):
+    """Update Ollama models."""
+
+    update_ollama_embed(url, overwrite)
+    EmbedModels.update()
     return {"status": "success"}
 
 
 @app.put("/chat/list/update/ollama")
-def update_ollama_models():
+def update_ollama_chat_models(url: Optional[str] = None, overwrite: bool = False):
     """Update Ollama models."""
 
-    add_ollama_models_to_config()
+    update_ollama_chat(url, overwrite)
     ChatModels.update()
     return {"status": "success"}
+
+
+def _resolve_url(url: Optional[HttpUrl]) -> Optional[str]:
+    """Resolve URL to str or None."""
+    if url:
+        return str(url)
+    return None
 
 
 def get_client(model: ChatModel | EmbedModel):
@@ -141,9 +197,11 @@ def get_client(model: ChatModel | EmbedModel):
         if model.backend == "ollama":
             if model.params:
                 return Ollama(
-                    model=model.model, base_url=str(model.config.url), **model.params
+                    model=model.model,
+                    base_url=_resolve_url(model.config.url),
+                    **model.params,
                 )
-            return Ollama(model=model.model, base_url=str(model.config.url))
+            return Ollama(model=model.model, base_url=_resolve_url(model.config.url))
         if model.backend == "openai":
             if model.params:
                 return OpenAI(
@@ -158,14 +216,14 @@ def get_client(model: ChatModel | EmbedModel):
         if model.backend == "azure":
             if model.params:
                 return AzureOpenAI(
-                    azure_endpoint=str(model.config.endpoint),
+                    azure_endpoint=_resolve_url(model.config.endpoint),
                     api_version=model.config.api_version,
                     model=model.model,
                     deployment=model.config.deployment,
                     **model.params,
                 )
             return AzureOpenAI(
-                azure_endpoint=str(model.config.endpoint),
+                azure_endpoint=_resolve_url(model.config.endpoint),
                 api_version=model.config.api_version,
                 model=model.model,
                 deployment=model.config.deployment,
@@ -176,17 +234,27 @@ def get_client(model: ChatModel | EmbedModel):
         )
     if isinstance(model, EmbedModel):
         if model.backend == "ollama":
+            if model.params:
+                return OllamaEmbedding(
+                    model=model.model,
+                    base_url=_resolve_url(model.config.url),
+                    **model.params,
+                )
             return OllamaEmbedding(
-                model=model.model, base_url=str(model.config.url), **model.params
-            )
-        if model.backend == "openai":
-            return OpenAI(
                 model=model.model,
-                api_base=model.config.api_base,
+                base_url=_resolve_url(model.config.url),
             )
         if model.backend == "azure":
+            if model.params:
+                return AzureOpenAIEmbedding(
+                    azure_endpoint=_resolve_url(model.config.endpoint),
+                    api_version=model.config.api_version,
+                    model=model.model,
+                    deployment=model.config.deployment,
+                    **model.params,
+                )
             return AzureOpenAIEmbedding(
-                azure_endpoint=str(model.config.endpoint),
+                azure_endpoint=_resolve_url(model.config.endpoint),
                 api_version=model.config.api_version,
                 model=model.model,
                 deployment=model.config.deployment,
@@ -200,7 +268,7 @@ def get_client(model: ChatModel | EmbedModel):
 @app.post("/chat/{model}/generate")
 async def generate_from_msgs(
     model: str,
-    messages: list[dict],
+    messages: list[dict] | str,
     stream: bool = True,
 ):
     """Generate a chat completion from a list of messages."""
@@ -213,6 +281,9 @@ async def generate_from_msgs(
         client = get_client(model_)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
 
     if stream:
 
@@ -235,7 +306,7 @@ async def generate_from_msgs(
     return res.as_json()
 
 
-@app.post("/embed/text/{model}")
+@app.post("/embed/{model}/generate")
 async def text_embeddings(
     model: str,
     text: str | list[str],

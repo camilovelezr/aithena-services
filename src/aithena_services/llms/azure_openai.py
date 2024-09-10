@@ -53,7 +53,7 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
 
     def __init__(self, **kwargs: Any):
         for arg in ["api_key", "azure_endpoint", "api_version"]:
-            if arg not in kwargs:
+            if arg not in kwargs or kwargs[arg] is None:
                 kwargs[arg] = AZURE_OPENAI_ENV_DICT[arg]
         if "deployment" in kwargs:
             if "engine" in kwargs:

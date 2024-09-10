@@ -1,33 +1,28 @@
 """Pydantic Models for Aithena-Services FastAPI REST Endpoints."""
 
 import json
-from typing import Literal, Optional, Self, Set, TypeVar
+from typing import Literal, Optional, Set, TypeVar
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
+from typing_extensions import Self
 from utils import CONFIG_PATH, _write_to_config_json
 
 
 class AzureOpenAIConfig(BaseModel):
     """Azure OpenAI Config."""
 
-    endpoint: HttpUrl
-    api_version: str
+    endpoint: Optional[HttpUrl] = None
+    api_version: Optional[str] = None
     deployment: str
-
-
-class OpenAIConfig(BaseModel):
-    """OpenAI Config."""
-
-    api_base: Optional[HttpUrl] = None
 
 
 class OllamaConfig(BaseModel):
     """Ollama Config."""
 
-    url: HttpUrl
+    url: Optional[HttpUrl] = None
 
 
-Config = TypeVar("Config", AzureOpenAIConfig, OpenAIConfig, OllamaConfig)
+Config = TypeVar("Config", AzureOpenAIConfig, OllamaConfig)
 
 
 class InvalidConfigError(Exception):
@@ -52,8 +47,6 @@ class EmbedModel(BaseModel):
         """Validate config."""
         if self.backend == "ollama" and not isinstance(self.config, OllamaConfig):
             raise InvalidConfigError("Invalid config for Ollama model.")
-        if self.backend == "openai" and not isinstance(self.config, OpenAIConfig):
-            raise InvalidConfigError("Invalid config for OpenAI model.")
         if self.backend == "azure" and not isinstance(self.config, AzureOpenAIConfig):
             raise InvalidConfigError("Invalid config for Azure OpenAI model.")
         return self
@@ -104,8 +97,13 @@ def read_embed_model_config():
 def init_embed_models():
     """Initialize model list from config.json."""
     if not CONFIG_PATH.exists():
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        with open(CONFIG_PATH, "x", encoding="utf-8") as f:
             f.write('{"chat_models": [], "embed_models": []}')
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            if f.read() == "":
+                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                    f.write('{"chat_models": [], "embed_models": []}')
     list_, names_ = read_embed_model_config()
     return EmbedModels(models=list_, names=names_)
 

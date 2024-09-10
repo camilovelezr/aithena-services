@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-CONFIG_PATH_ = os.getenv("AITHENA_CONFIG_PATH", None)
+CONFIG_PATH_ = os.getenv("AITHENA_SERVICES_CONFIG_PATH", None)
 if CONFIG_PATH_ is None:
     CONFIG_PATH = Path(__file__).parent.joinpath("config.json")
 else:

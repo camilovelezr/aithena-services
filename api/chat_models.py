@@ -1,17 +1,18 @@
 """Pydantic Models for Aithena-Services FastAPI REST Endpoints."""
 
 import json
-from typing import Literal, Optional, Self, Set, TypeVar
+from typing import Literal, Optional, Set, TypeVar
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
+from typing_extensions import Self
 from utils import CONFIG_PATH, _write_to_config_json
 
 
 class AzureOpenAIConfig(BaseModel):
     """Azure OpenAI Config."""
 
-    endpoint: HttpUrl
-    api_version: str
+    endpoint: Optional[HttpUrl] = None
+    api_version: Optional[str] = None
     deployment: str
 
 
@@ -24,7 +25,7 @@ class OpenAIConfig(BaseModel):
 class OllamaConfig(BaseModel):
     """Ollama Config."""
 
-    url: HttpUrl
+    url: Optional[HttpUrl] = None
 
 
 Config = TypeVar("Config", AzureOpenAIConfig, OpenAIConfig, OllamaConfig)
@@ -104,8 +105,13 @@ def read_chat_model_config():
 def init_chat_models():
     """Initialize model list from config.json."""
     if not CONFIG_PATH.exists():
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        with open(CONFIG_PATH, "x", encoding="utf-8") as f:
             f.write('{"chat_models": [], "embed_models": []}')
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            if f.read() == "":
+                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                    f.write('{"chat_models": [], "embed_models": []}')
     list_, names_ = read_chat_model_config()
     return ChatModels(models=list_, names=names_)
 
