@@ -1,5 +1,5 @@
 {
-    "models": [
+    "chat_models": [
         {
             "name": "phi3.5:latest",
             "model": "phi3.5:latest",
@@ -12,24 +12,6 @@
         {
             "name": "llama3.1:latest",
             "model": "llama3.1:latest",
-            "backend": "ollama",
-            "config": {
-                "url": "http://localhost:11434/"
-            },
-            "params": null
-        },
-        {
-            "name": "longllama16k:latest",
-            "model": "longllama16k:latest",
-            "backend": "ollama",
-            "config": {
-                "url": "http://localhost:11434/"
-            },
-            "params": null
-        },
-        {
-            "name": "longllama32k:latest",
-            "model": "longllama32k:latest",
             "backend": "ollama",
             "config": {
                 "url": "http://localhost:11434/"
@@ -88,6 +70,17 @@
             "backend": "openai",
             "config": {
                 "url": null
+            },
+            "params": null
+        }
+    ],
+    "embed_models": [
+        {
+            "name": "nomic-embed-text:latest",
+            "model": "nomic-embed-text:latest",
+            "backend": "ollama",
+            "config": {
+                "url": "http://localhost:11434/"
             },
             "params": null
         }

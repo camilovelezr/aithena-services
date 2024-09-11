@@ -8,11 +8,18 @@ You will need to set up two different config files:
 2. Replace the values of the environment variables with the correct values
 3. *Optional* - Add other environment variables for Aithena Services, (e.g OLLAMA_HOST)
 
+*IMPORTANT:* Do not include quotation marks (") in your .env file, for example:
+```
+AZURE_OPENAI_API_KEY="abc123" # this will not work
+AZURE_OPENAI_API_KEY=abc123 # this is correct
+```
+
 ### 2. config.json
 1. In `docker/config`, rename `config_sample.json` to `config.json`
 2. Manually replace - add - entries for AzureOpenAI models (for Chat and for Embed)
 3. You can optionally add entries for Ollama, however, running a PUT request to `/embed/list/update/ollama` or `/chat/list/update/ollama` will add them automatically for you
 
+See [these instructions](docs/api_config.md) for more information.
 ## Docker Build
 From `aithena-services` directory, run `./docker/build-docker.sh`.
 
