@@ -6,9 +6,9 @@ from copy import copy
 from typing import Optional
 
 import requests
-from chat_models import ChatModel
-from embed_models import EmbedModel
-from utils import CONFIG_PATH, _write_to_config_json
+from api.chat_models import ChatModel
+from api.embed_models import EmbedModel
+from api.utils import CONFIG_PATH, _write_to_config_json
 
 from aithena_services.envvars import OLLAMA_AVAILABLE
 

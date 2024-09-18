@@ -8,7 +8,7 @@ import solara.lab
 from component_utils import EditableMessage, ModelLabel, ModelRow
 
 # import reacton.ipyvuetify as rv
-from aithena_services.llms import Ollama  # type: ignore
+from aithena_services.llms.ollama import Ollama  # type: ignore
 
 FILE_PATH = Path(__file__).parent.absolute()
 

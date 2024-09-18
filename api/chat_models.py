@@ -5,7 +5,7 @@ from typing import Literal, Optional, Set, TypeVar
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 from typing_extensions import Self
-from utils import CONFIG_PATH, _write_to_config_json
+from api.utils import CONFIG_PATH, _write_to_config_json
 
 
 class AzureOpenAIConfig(BaseModel):
