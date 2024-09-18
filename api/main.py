@@ -6,17 +6,18 @@
 import json
 from typing import Optional
 
-from chat_models import ChatModel, init_chat_models
-from embed_models import EmbedModel, init_embed_models
+from api.chat_models import ChatModel, init_chat_models
+from api.embed_models import EmbedModel, init_embed_models
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from funcs import (
+from api.funcs import (
     add_chat_model_to_config,
     add_embed_model_to_config,
     update_ollama_chat,
     update_ollama_embed,
 )
 from pydantic import HttpUrl
+from solara.server.fastapi import app as solara_app
 
 from aithena_services.envvars import (
     AZURE_OPENAI_AVAILABLE,
@@ -43,6 +44,7 @@ app = FastAPI()
 ChatModels = init_chat_models()
 EmbedModels = init_embed_models()
 
+app.mount("/dashboards/chat/", app=solara_app)
 
 def check_platform(platform: str):
     """Check if the platform is valid."""
