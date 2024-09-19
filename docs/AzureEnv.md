@@ -9,7 +9,7 @@ AZURE_OPENAI_ENDPOINT="https://mygreatendpoint.openai.azure.com/"
 
 In [Azure OpenAI Studio](https://oai.azure.com), on the bar at the top, click on 'Resources'.
 
-<img src="docs/resources/logo.png" height="150px">
+<img src="resources/logo.png" height="150px">
 
 You will see a screen with the values of 'Endpoint' and 'Key'.
 
@@ -21,7 +21,7 @@ To use a chat or an embed model through Azure OpenAI, you must first 'deploy' it
 To see the deployments you have available, visit [Azure OpenAI Studio](https://oai.azure.com/resource/deployments).
 
 You should see a list similar to:
-<img src="docs/resources/deployments.png" height="150px">
+<img src="resources/deployments.png" height="150px">
 
 For each deployment you will need to set up the following environment variable:
 ```
