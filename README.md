@@ -1,5 +1,7 @@
 # aithena-services
 
+For information on how to set up your environment, [see here](/docs/env.md).
+
 ## Launch the test chat dashboard
 
 1. Save `.env-sample` as `.env`
