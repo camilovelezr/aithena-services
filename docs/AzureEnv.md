@@ -21,6 +21,7 @@ To use a chat or an embed model through Azure OpenAI, you must first 'deploy' it
 To see the deployments you have available, visit [Azure OpenAI Studio](https://oai.azure.com/resource/deployments).
 
 You should see a list similar to:
+
 <img src="resources/deployments.png" height="150px">
 
 For each deployment you will need to set up the following environment variable:
@@ -44,7 +45,9 @@ This would allow you to call the `/chat` endpoint of Aithena-Services REST API i
 
 ---
 Let's set up an embedding model:
-<img src="docs/resources/embed.png" height="150px">
+
+<img src="resources/embed.png" height="150px">
+
 we can use something like
 ```
 AZURE_OPENAI_DEPLOYMENT_EMBED_ADA02=text-embedding-ada-002
