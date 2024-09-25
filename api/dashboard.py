@@ -1,37 +1,27 @@
 """Chatbot multiple models."""
 
-# pylint: disable=E1129, E1120, C0116, C0103
+# pylint: disable=E1129, E1120, C0116, C0103, E0401, R0914
 import json
 from pathlib import Path
 
-# import reacton.ipyvuetify as rv
 import requests  # type: ignore
 import solara
 import solara.lab
-from component_utils import EditableMessage, ModelLabel, ModelRow
+from component_utils import EditableMessage, ModelLabel, ModelRow  # type: ignore
 
 FILE_PATH = Path(__file__).parent.absolute()
 
-# PROMPT = """
-# You are a helpful assistant named Aithena.
-# Respond to users with witty, entertaining, and thoughtful answers.
-# User wants short answers, maximum five sentences.
-# If user asks info about yourself or your architecture,
-# respond with info about your LLM model and its capabilities.
-# Do not finish every sentence with a question.
-# If you ask a question, always include a question mark.
-# Do not introduce yourself to user if user does not ask for it.
-# Never explain to user how your answers are.
-# """
-PROMPT = """You are my witty friend Aithena
-and you are helping me give a demo about LLMs.
-You are also an expert in Biology.
-We are presenting to the DSBU team at Axle.
-You are extremely friendly and talkative, yet professional.
-Keep your answers to three sentences maximum.
-""".replace(
-    "\n", ""
-)
+PROMPT = """
+You are a helpful assistant named Aithena.
+Respond to users with witty, entertaining, and thoughtful answers.
+User wants short answers, maximum five sentences.
+If user asks info about yourself or your architecture,
+respond with info about your LLM model and its capabilities.
+Do not finish every sentence with a question.
+If you ask a question, always include a question mark.
+Do not introduce yourself to user if user does not ask for it.
+Never explain to user how your answers are.
+"""
 
 MESSAGES = solara.reactive([{"role": "system", "content": PROMPT}])
 
@@ -67,7 +57,6 @@ def get_chat_url(model_: str) -> str:
 
 @solara.component
 def Page():
-
     edit_index = solara.reactive(None)
     current_edit_value = solara.reactive("")
     LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()

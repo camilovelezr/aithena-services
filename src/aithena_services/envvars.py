@@ -1,10 +1,13 @@
 """Environment Variable Configuration for Aithena Services."""
 
+import logging
 import os
 
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv(), override=True)
+
+env = os.environ
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", None)
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", None)
@@ -17,25 +20,24 @@ AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", None)
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", None)
 AZURE_OPENAI_ENV_DICT = {
     "api_key": AZURE_OPENAI_KEY,
-    "azure_endpoint": AZURE_OPENAI_ENDPOINT,  # redundant, compatible with LI
+    "azure_endpoint": AZURE_OPENAI_ENDPOINT,  # redundant name, compatible with LI
     "api_version": AZURE_OPENAI_API_VERSION,
 }
-
-OPENAI_AVAILABLE = OPENAI_KEY is not None
-OLLAMA_AVAILABLE = OLLAMA_HOST is not None
-
-AZURE_OPENAI_AVAILABLE = (
-    (AZURE_OPENAI_KEY is not None)
-    and (AZURE_OPENAI_ENDPOINT is not None)
-    and (AZURE_OPENAI_API_VERSION is not None)
-)
+AZURE_OPENAI_CHAT_MODELS_DICT: dict[str, str] = {}
+AZURE_OPENAI_EMBED_MODELS_DICT: dict[str, str] = {}
+for key, value in env.items():
+    if key.startswith("AZURE_OPENAI_DEPLOYMENT_CHAT"):
+        k = key.split("_")[-1].lower()
+        AZURE_OPENAI_CHAT_MODELS_DICT[k] = value
+    if key.startswith("AZURE_OPENAI_DEPLOYMENT_EMBED"):
+        k = key.split("_")[-1].lower()
+        AZURE_OPENAI_EMBED_MODELS_DICT[k] = value
 
 
 __all__ = [
-    "OPENAI_AVAILABLE",
-    "OLLAMA_AVAILABLE",
     "OPENAI_KEY",
     "OLLAMA_HOST",
-    "AZURE_OPENAI_AVAILABLE",
     "AZURE_OPENAI_ENV_DICT",
+    "AZURE_OPENAI_CHAT_MODELS_DICT",
+    "AZURE_OPENAI_EMBED_MODELS_DICT",
 ]

@@ -12,7 +12,7 @@ pydantic = "^2.7.4"
 openai = "^1.35.13"
 requests = "^2.32.3"
 ollama = "^0.3.1"
-fastapi = {extras = ["standard"], version = "^0.112.0"}
+fastapi = {extras = ["standard"], version = ">=0.112.0"}
 pytest-asyncio = "^0.23.8"
 python-dotenv = "^1.0.1"
 llama-index = "^0.11.0"

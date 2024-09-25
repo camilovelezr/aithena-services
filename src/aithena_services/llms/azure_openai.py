@@ -6,7 +6,11 @@ from typing import Any, Sequence
 
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaIndexAzureOpenAI
 
-from aithena_services.envvars import AZURE_OPENAI_ENV_DICT
+from aithena_services.common.azure import resolve_azure_deployment
+from aithena_services.envvars import (
+    AZURE_OPENAI_CHAT_MODELS_DICT,
+    AZURE_OPENAI_ENV_DICT,
+)
 from aithena_services.llms.types import Message
 from aithena_services.llms.types.base import AithenaLLM, chataithena, streamchataithena
 from aithena_services.llms.types.response import (
@@ -40,16 +44,16 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
     """
 
     @staticmethod
-    def list_models() -> list[str]:
-        """List available models/deployments in Azure OpenAI.
+    def list_deployments() -> list[str]:
+        """List available deployments in Azure OpenAI.
 
-        This method is not implemented in Azure OpenAI.
-        The API calls needed for this, require elevated permissions
-        and are not part of Azure OpenAI REST API.
+        This method lists all available deployments for Azure OpenAI
+        that are listed as environment variables in the correct format.
+        The format is `AZURE_OPENAI_DEPLOYMENT_CHAT_{name}={value}`.
         """
-        raise NotImplementedError(
-            "list_models() is not yet implemented in Azure OpenAI."
-        )
+        return list(AZURE_OPENAI_CHAT_MODELS_DICT.keys())
+
+    list_models = list_deployments  # Alias
 
     def __init__(self, **kwargs: Any):
         for arg in ["api_key", "azure_endpoint", "api_version"]:
@@ -59,6 +63,9 @@ class AzureOpenAI(LlamaIndexAzureOpenAI, AithenaLLM):
             if "engine" in kwargs:
                 raise ValueError("Cannot specify both `deployment` and `engine`.")
             kwargs["engine"] = kwargs.pop("deployment")
+        kwargs["engine"] = resolve_azure_deployment(
+            kwargs["engine"], AZURE_OPENAI_CHAT_MODELS_DICT
+        )
         super().__init__(**kwargs)
 
     @chataithena

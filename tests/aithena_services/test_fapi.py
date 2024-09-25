@@ -277,7 +277,40 @@ def test_azure_embed_list():
         pytest.skip("No azure models available")
     model_ = requests.get(URL + "/embed/list/azure", timeout=20).json()[0]
     res = requests.post(
-        URL + f"/embed/text/{model_}",
+        URL + f"/embed/{model_}/generate",
+        json=["This is a test", "This is another test"],
+        timeout=20,
+        stream=False,
+    ).json()
+    assert isinstance(res, list)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], float)
+
+
+@pytest.mark.skipif(not OLLAMA_AVAILABLE, reason="ollama not available")
+def test_ollama_embed_st():
+    """Test ollama embed."""
+    if len(requests.get(URL + "/embed/list/ollama", timeout=20).json()) == 0:
+        pytest.skip("No ollama models available")
+    model_ = requests.get(URL + "/embed/list/ollama", timeout=20).json()[0]
+    res = requests.post(
+        URL + f"/embed/{model_}/generate",
+        json="This is a test",
+        timeout=20,
+        stream=False,
+    ).json()
+    assert isinstance(res, list)
+    assert isinstance(res[0], float)
+
+
+@pytest.mark.skipif(not OLLAMA_AVAILABLE, reason="ollama not available")
+def test_ollama_embed_list():
+    """Test ollama embed list."""
+    if len(requests.get(URL + "/embed/list/ollama", timeout=20).json()) == 0:
+        pytest.skip("No ollama models available")
+    model_ = requests.get(URL + "/embed/list/ollama", timeout=20).json()[0]
+    res = requests.post(
+        URL + f"/embed/{model_}/generate",
         json=["This is a test", "This is another test"],
         timeout=20,
         stream=False,
