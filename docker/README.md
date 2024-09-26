@@ -1,12 +1,10 @@
 # AIthena Services - Docker
 These are instructions to set up and serve AIthena Services in a docker container.
 
-## Set up
-You will need to set up two different config files:
-### 1. variables.env
+## Environment Variables
+### **Check [docs/env.md](../docs/env.md) for more details**
 1. Rename `variables_sample.env` to `variables.env`
 2. Replace the values of the environment variables with the correct values
-3. *Optional* - Add other environment variables for Aithena Services, (e.g OLLAMA_HOST)
 
 *IMPORTANT:* Do not include quotation marks (") in your .env file, for example:
 ```
@@ -14,23 +12,11 @@ AZURE_OPENAI_API_KEY="abc123" # this will not work
 AZURE_OPENAI_API_KEY=abc123 # this is correct
 ```
 
-### 2. config.json
-1. In `docker/config`, rename `config_sample.json` to `config.json`
-2. Manually replace - add - entries for AzureOpenAI models (for Chat and for Embed)
-3. You can optionally add entries for Ollama, however, running a PUT request to `/embed/list/update/ollama` or `/chat/list/update/ollama` will add them automatically for you
-
-See [these instructions](docs/api_config.md) for more information.
-## Docker Build
-From `aithena-services` directory, run `./docker/build-docker.sh`.
-
-This will build a docker image tagged "aithena-services:VERSION".
-
 ## Docker Run
 Use a command similar to:
 ```
 docker run -itd --name "ais0" -p 8001:80 \
 --env-file docker/variables.env \
---mount type=bind,src=/home/aithena-services/docker/config,dst=/mnt/config \
 --network=name=ais0 \
 aithena-services:0.0.1
 ```
@@ -38,7 +24,6 @@ aithena-services:0.0.1
 Args:
 * `-p` X:80, X is your host machine port where the FastAPI (running inside the container's port 80) will be mapped
 * `--env-file` leave as `docker/variables.env` - assuming you have already correctly followed the steps in the previous section
-* `--mount type=bind,src=SRC,dst=/mnt/config` change `SRC` to reflect your local `aithena-services` directory **absolute path**
 * `--network` is optional, in case you are running the container inside a docker network
 
 ## Test API
@@ -47,14 +32,6 @@ Run a GET request to `/test` and you should get `{"status": "success"}`:
 ~ $ curl http://localhost:8001/test     
 {"status":"success"}% 
 ```
-
-## Set Up Models
-To pull llama3.1 and nomic-embed-text in Ollama and make sure aithena-services FastAPI is aware of these models,
-you can run the python script `setup_ollama.py`:
-
-`python3 docker/setup_ollama.py --ollama-host http://localhost:11435 --api-host http://localhost:8001 --internal-ollama-host http://192.0.0.89:11434`
-
-For example, this would be the command if I am running an Ollama container that I have attached to my host's machine 11435 port and that inside the `ais0` docker network has the address 192.0.0.89
 
 ## Examples
 ### Embeddings
