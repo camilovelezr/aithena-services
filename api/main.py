@@ -8,12 +8,14 @@ from logging import getLogger
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from solara.server.fastapi import app as solara_app
 
 from aithena_services.embeddings.azure_openai import AzureOpenAIEmbedding
 from aithena_services.embeddings.ollama import OllamaEmbedding
 from aithena_services.llms.azure_openai import AzureOpenAI
 from aithena_services.llms.ollama import Ollama
+from aithena_services.envvars import OLLAMA_HOST
+import requests
+import httpx
 
 logger = getLogger(__name__)
 
@@ -106,7 +108,7 @@ def resolve_client_embed(model: str):
 async def generate_from_msgs(
     model: str,
     messages: list[dict] | str,
-    stream: bool = True,
+    stream: bool = False,
 ):
     """Generate a chat completion from a list of messages."""
 
@@ -143,7 +145,7 @@ async def text_embeddings(
     """Get text embeddings."""
     client = resolve_client_embed(model)
     try:
-        print(f"Client: {client}")
+        print(f"Embedding with client: {client}")
         if isinstance(text, str):
             res = await client._aget_text_embedding(text)
         if isinstance(text, list):
@@ -152,5 +154,39 @@ async def text_embeddings(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return res
 
+@app.post("/ollama/pull/{model}")
+async def pull_ollama_model(model: str):
+    """Pull Ollama model."""
+    try:
+        async def stream_response():
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST", f"{OLLAMA_HOST}/api/pull", json={"name": model}
+                ) as response:
+                    async for line in response.aiter_lines():
+                        yield line + "\n"
 
-app.mount("/dashboard", solara_app)
+        return StreamingResponse(
+            stream_response(), media_type="application/json"
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+@app.get("/ollama/ps")
+async def ollama_ps():
+    """List Ollama models running."""
+    try:
+        res = httpx.get(f"{OLLAMA_HOST}/api/ps").json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return res
+
+@app.delete("/ollama/delete/{model}")
+async def ollama_delete(model: str):
+    """Delete Ollama model."""
+    try:
+        res = requests.delete(f"{OLLAMA_HOST}/api/delete", json={"name": model})
+        res.raise_for_status()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "success"}

@@ -7,7 +7,6 @@ COPY . /aithena_services_src
 
 RUN pip3 install -e /aithena_services_src --no-cache-dir
 WORKDIR /aithena_services_src/api
-ENV SOLARA_APP=dashboard.py
 
 EXPOSE 80
 
