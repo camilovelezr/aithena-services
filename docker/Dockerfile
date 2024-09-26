@@ -7,7 +7,8 @@ COPY . /aithena_services_src
 
 RUN pip3 install -e /aithena_services_src --no-cache-dir
 WORKDIR /aithena_services_src/api
+ENV SOLARA_APP=dashboard.py
 
 EXPOSE 80
 
-CMD ["SOLARA_APP=dashboard.py", "uvicorn", "--port", "80", "main:app"]
+CMD ["uvicorn", "--host", "0.0.0.0", "--port", "80", "main:app"]
