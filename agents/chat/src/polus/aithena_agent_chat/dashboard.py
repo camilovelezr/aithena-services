@@ -135,9 +135,7 @@ def Page():
     solara.Title("Aithena")
     llm_options = LLMS_AVAILABLE
 
-    llm_name, set_llm_name = solara.use_state(
-        LLMS_AVAILABLE[0] if len(LLMS_AVAILABLE) > 0 else ""
-    )
+    llm_name, set_llm_name = solara.use_state("")
 
     reset_on_change, set_reset_on_change = solara.use_state(False)
 
