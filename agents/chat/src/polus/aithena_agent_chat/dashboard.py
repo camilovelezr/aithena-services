@@ -2,16 +2,32 @@
 
 # pylint: disable=E1129, E1120, C0116, C0103, E0401, R0914
 import json
+import logging
+import os
+from copy import copy
+from functools import partial
 from pathlib import Path
+from typing import Callable
 
 import requests  # type: ignore
 import solara
 import solara.lab
 from component_utils import EditableMessage, ModelLabel, ModelRow  # type: ignore
+from solara.alias import rv
+
+logger = logging.getLogger("aithena-agent-chat")
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger.setLevel(logging.DEBUG)
+
+API_URL = os.getenv("AITHENA_SERVICES_URL", "http://localhost:8000")
+API_URL = API_URL[:-1] if API_URL.endswith("/") else API_URL
+logger.info(f"Started Aithena Chat Agent with API URL: {API_URL}")
 
 FILE_PATH = Path(__file__).parent.absolute()
 
-PROMPT = """
+PROMPT_DEFAULT = """
 You are a helpful assistant named Aithena.
 Respond to users with witty, entertaining, and thoughtful answers.
 User wants short answers, maximum five sentences.
@@ -22,6 +38,8 @@ If you ask a question, always include a question mark.
 Do not introduce yourself to user if user does not ask for it.
 Never explain to user how your answers are.
 """
+
+PROMPT = os.getenv("AITHENA_CHAT_PROMPT", PROMPT_DEFAULT)
 
 MESSAGES = solara.reactive([{"role": "system", "content": PROMPT}])
 
@@ -47,7 +65,7 @@ def change_llm_name(set_llm_name, reset_on_change, set_model_labels, *args):
     return
 
 
-CHAT_URL = "http://localhost:8000/chat/"
+CHAT_URL = f"{API_URL}/chat/"
 
 
 def get_chat_url(model_: str) -> str:
@@ -56,16 +74,70 @@ def get_chat_url(model_: str) -> str:
 
 
 @solara.component
+def UserQuery(
+    messages: solara.Reactive,
+    user_query: str,
+    set_user_query: Callable,
+    llm_name: str,
+    task: solara.tasks.Task,
+):
+    def send_query(*args):
+        msg = copy(args[0].v_model)
+        set_user_query("")
+        messages.value = [*messages.value, {"role": "user", "content": msg}]
+
+    with solara.Row(gap="0px"):
+
+        def click_outer(event, *args):
+            if task.pending:
+                logger.info("Stop streaming clicked")
+                print("Stop streaming clicked")
+                # stop_streaming.set(True)
+                return
+            send_query(event, *args)
+
+        tf = rv.Textarea(
+            label="Query",
+            filled=True,
+            dense=False,
+            rounded=True,
+            append_outer_icon=(
+                "mdi-send" if not task.pending else "mdi-stop-circle-outline"
+            ),
+            placeholder=f"Message {llm_name}",
+            autofocus=True,
+            v_model=user_query,
+            on_v_model=partial(set_user_query),
+            # disabled=task.pending,
+            auto_grow=True,
+            row_height="5px",
+            style_="left: -5px; top: 20px;",
+        )
+        rv.use_event(
+            tf,
+            "click:append-outer",
+            click_outer,
+        )
+        rv.use_event(
+            tf,
+            "keydown.enter.exact.prevent",
+            send_query,
+        )
+
+
+@solara.component
 def Page():
     edit_index = solara.reactive(None)
     current_edit_value = solara.reactive("")
-    LLMS_AVAILABLE = requests.get("http://localhost:8000/chat/list", timeout=10).json()
+    LLMS_AVAILABLE = requests.get(f"{CHAT_URL}list", timeout=10).json()
 
     solara.Style(FILE_PATH.joinpath("style.css"))
     solara.Title("Aithena")
     llm_options = LLMS_AVAILABLE
 
-    llm_name, set_llm_name = solara.use_state("llama3.1")
+    llm_name, set_llm_name = solara.use_state(
+        LLMS_AVAILABLE[0] if len(LLMS_AVAILABLE) > 0 else ""
+    )
 
     reset_on_change, set_reset_on_change = solara.use_state(False)
 
@@ -75,6 +147,7 @@ def Page():
 
     is_menu_open, set_is_menu_open = solara.use_state(False)
     model_labels, set_model_labels = solara.use_state({})
+    user_query, set_user_query = solara.use_state("")
 
     def user_send(message):
         print(f"Going to send user message: {message}")
@@ -82,11 +155,12 @@ def Page():
         print(f"Sent user message: {MESSAGES.value}")
 
     def call_llm():
-        print(f"Calling LLM with {MESSAGES.value}")
         if user_message_count == 0:
             return
+        print(f"Calling LLM with {MESSAGES.value}")
         response = requests.post(
             get_chat_url(llm_name),
+            params={"stream": True},
             json=MESSAGES.value,
             timeout=60,
             stream=True,
@@ -96,7 +170,7 @@ def Page():
         MESSAGES.value = msgs
 
         for line in response.iter_lines():
-            print(f"Received line: {line}")
+            logger.debug(f"Received line: {line}")
             if line:
                 add_chunk_to_ai_message(json.loads(line)["delta"])
 
@@ -106,7 +180,7 @@ def Page():
         style={
             "width": "100%",
             "position": "relative",
-            "height": "calc(100vh - 50px)",
+            "height": "calc(100vh - 65px)",
             "padding-bottom": "15px",
             "overflow-y": "auto",
         },
@@ -169,13 +243,29 @@ def Page():
                             set_is_menu_open,
                             is_last,
                         )
-        solara.lab.ChatInput(
-            send_callback=user_send,
-            disabled=task.pending,
-            style={
-                "position": "fixed",
-                "bottom": "0",
-                "width": "100%",
-                "padding-bottom": "5px",
-            },
+    with solara.Column(
+        style={
+            "position": "fixed",
+            "bottom": "0",
+            "padding-left": "5px",
+            "padding-right": "5px",
+            "width": "100%",
+        },
+    ):
+        UserQuery(
+            MESSAGES,
+            user_query,
+            set_user_query,
+            llm_name,
+            task,
         )
+    # solara.lab.ChatInput(
+    #     send_callback=user_send,
+    #     disabled=task.pending,
+    #     style={
+    #         "position": "fixed",
+    #         "bottom": "0",
+    #         "width": "100%",
+    #         "padding-bottom": "5px",
+    #     },
+    # )
