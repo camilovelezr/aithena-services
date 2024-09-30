@@ -1,6 +1,6 @@
 """Chatbot multiple models."""
 
-# pylint: disable=E1129, E1120, C0116, C0103, E0401, R0914
+# pylint: disable=E1129, E1120, C0116, C0103, E0401, R0914, W1203
 import json
 import logging
 import os
@@ -147,11 +147,6 @@ def Page():
     model_labels, set_model_labels = solara.use_state({})
     user_query, set_user_query = solara.use_state("")
 
-    def user_send(message):
-        print(f"Going to send user message: {message}")
-        MESSAGES.value = [*MESSAGES.value, {"role": "user", "content": message}]
-        print(f"Sent user message: {MESSAGES.value}")
-
     def call_llm():
         if user_message_count == 0:
             return
@@ -160,7 +155,7 @@ def Page():
             get_chat_url(llm_name),
             params={"stream": True},
             json=MESSAGES.value,
-            timeout=60,
+            timeout=120,
             stream=True,
         )
         print(f"Sent messages to LLM: {MESSAGES.value}")
@@ -257,13 +252,3 @@ def Page():
             llm_name,
             task,
         )
-    # solara.lab.ChatInput(
-    #     send_callback=user_send,
-    #     disabled=task.pending,
-    #     style={
-    #         "position": "fixed",
-    #         "bottom": "0",
-    #         "width": "100%",
-    #         "padding-bottom": "5px",
-    #     },
-    # )
