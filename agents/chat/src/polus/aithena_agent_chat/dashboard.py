@@ -73,6 +73,9 @@ def get_chat_url(model_: str) -> str:
     return CHAT_URL + model_ + "/generate"
 
 
+STOP_STREAMING = solara.reactive(False)
+
+
 @solara.component
 def UserQuery(
     messages: solara.Reactive,
@@ -88,60 +91,68 @@ def UserQuery(
 
     with solara.Row(gap="0px"):
 
-        def click_outer(event, *args):
+        def manage_click(event, *args):
             if task.pending:
                 logger.info("Stop streaming clicked")
-                print("Stop streaming clicked")
-                # stop_streaming.set(True)
+                STOP_STREAMING.value = True
                 return
             send_query(event, *args)
 
+        def manage_enter(event, *args):
+            if user_query == "":
+                return
+            if task.pending:
+                set_user_query(user_query+"\n")
+                return
+            send_query(event, *args)
+
+        icon = "mdi-send" if not task.pending and user_query != "" else "mdi-stop-circle" if task.pending else "mdi-send; disabled=True;"
         tf = rv.Textarea(
-            label="Query",
             filled=True,
-            dense=False,
             rounded=True,
-            append_outer_icon=(
-                "mdi-send" if not task.pending else "mdi-stop-circle-outline"
-            ),
-            placeholder=f"Message {llm_name}",
+            append_icon=icon,
+            label=f"Message {llm_name}",
             autofocus=True,
             v_model=user_query,
             on_v_model=partial(set_user_query),
-            # disabled=task.pending,
             auto_grow=True,
-            row_height="5px",
+            row_height="3px",
+            rows="1",
             style_="left: -5px; top: 20px;",
         )
         rv.use_event(
             tf,
-            "click:append-outer",
-            click_outer,
+            "click:append",
+            manage_click,
         )
         rv.use_event(
             tf,
             "keydown.enter.exact.prevent",
-            send_query,
+            manage_enter,
         )
 
 
-@solara.component
+LLMS_AVAILABLE = requests.get(f"{CHAT_URL}list", timeout=10).json()
+DEFAULT_LLM = os.getenv("AITHENA_CHAT_DEFAULT_MODEL", "")
+DEFAULT_LLM = DEFAULT_LLM if DEFAULT_LLM in LLMS_AVAILABLE else ""
+
+
+@ solara.component
 def Page():
     edit_index = solara.reactive(None)
     current_edit_value = solara.reactive("")
-    LLMS_AVAILABLE = requests.get(f"{CHAT_URL}list", timeout=10).json()
 
     solara.Style(FILE_PATH.joinpath("style.css"))
     solara.Title("Aithena")
-    llm_options = LLMS_AVAILABLE
 
-    llm_name, set_llm_name = solara.use_state("")
+    llm_name, set_llm_name = solara.use_state(DEFAULT_LLM)
 
     reset_on_change, set_reset_on_change = solara.use_state(False)
 
     edit_mode, set_edit_mode = solara.use_state(False)
 
-    user_message_count = len([m for m in MESSAGES.value if m["role"] == "user"])
+    user_message_count = len(
+        [m for m in MESSAGES.value if m["role"] == "user"])
 
     is_menu_open, set_is_menu_open = solara.use_state(False)
     model_labels, set_model_labels = solara.use_state({})
@@ -150,7 +161,7 @@ def Page():
     def call_llm():
         if user_message_count == 0:
             return
-        print(f"Calling LLM with {MESSAGES.value}")
+        logger.info(f"Calling LLM with {MESSAGES.value}")
         response = requests.post(
             get_chat_url(llm_name),
             params={"stream": True},
@@ -158,16 +169,22 @@ def Page():
             timeout=120,
             stream=True,
         )
-        print(f"Sent messages to LLM: {MESSAGES.value}")
+        logger.info(f"Sent messages to LLM: {MESSAGES.value}")
         msgs = [*MESSAGES.value, {"role": "assistant", "content": ""}]
         MESSAGES.value = msgs
 
         for line in response.iter_lines():
             logger.debug(f"Received line: {line}")
-            if line:
-                add_chunk_to_ai_message(json.loads(line)["delta"])
+            if not STOP_STREAMING.value:
+                if line:
+                    add_chunk_to_ai_message(json.loads(line)["delta"])
+            else:
+                STOP_STREAMING.value = False
+                break
+        return
 
-    task = solara.lab.use_task(call_llm, dependencies=[user_message_count])  # type: ignore
+    task = solara.lab.use_task(call_llm, dependencies=[
+                               user_message_count])  # type: ignore
 
     with solara.Column(
         style={
@@ -179,7 +196,7 @@ def Page():
         },
     ):
         ModelRow(
-            llm_options,
+            LLMS_AVAILABLE,
             llm_name,
             set_llm_name,
             set_model_labels,
