@@ -89,7 +89,7 @@ def resolve_client_chat(model: str, num_ctx: Optional[int]):
         return AzureOpenAI(deployment=model)
     if f"{model}:latest" in Ollama.list_models():
         if num_ctx:
-            return Ollama(model=f"{model}:latest", context_window=num_ctx)
+            return Ollama(model=f"{model}:latest", context_window=num_ctx, request_timeout=500)
         return Ollama(model=f"{model}:latest")
     if model in Ollama.list_models():
         if num_ctx:
