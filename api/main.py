@@ -5,17 +5,18 @@
 
 import json
 from logging import getLogger
+from typing import Optional
 
+import httpx
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
 from aithena_services.embeddings.azure_openai import AzureOpenAIEmbedding
 from aithena_services.embeddings.ollama import OllamaEmbedding
+from aithena_services.envvars import OLLAMA_HOST
 from aithena_services.llms.azure_openai import AzureOpenAI
 from aithena_services.llms.ollama import Ollama
-from aithena_services.envvars import OLLAMA_HOST
-import requests
-import httpx
 
 logger = getLogger(__name__)
 
@@ -82,13 +83,17 @@ def list_embed_models_by_platform(platform: str):
     return OllamaEmbedding.list_models()
 
 
-def resolve_client_chat(model: str):
+def resolve_client_chat(model: str, num_ctx: Optional[int]):
     """Resolve client for chat models."""
     if model in AzureOpenAI.list_models():
         return AzureOpenAI(deployment=model)
     if f"{model}:latest" in Ollama.list_models():
+        if num_ctx:
+            return Ollama(model=f"{model}:latest", context_window=num_ctx)
         return Ollama(model=f"{model}:latest")
     if model in Ollama.list_models():
+        if num_ctx:
+            return Ollama(model=model, context_window=num_ctx, request_timeout=500)
         return Ollama(model=model)
     raise HTTPException(status_code=400, detail="Invalid model.")
 
@@ -109,11 +114,13 @@ async def generate_from_msgs(
     model: str,
     messages: list[dict] | str,
     stream: bool = False,
+    num_ctx: Optional[int] = None,
 ):
     """Generate a chat completion from a list of messages."""
 
-    print(f"For {model} chat, received {messages}, stream: {stream}")
-    client = resolve_client_chat(model)
+    print(
+        f"For {model} chat, received {messages}, stream: {stream}, num_ctx: {num_ctx}")
+    client = resolve_client_chat(model, num_ctx)
 
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
@@ -154,6 +161,7 @@ async def text_embeddings(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return res
 
+
 @app.post("/ollama/pull/{model}")
 async def pull_ollama_model(model: str):
     """Pull Ollama model."""
@@ -172,6 +180,7 @@ async def pull_ollama_model(model: str):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+
 @app.get("/ollama/ps")
 async def ollama_ps():
     """List Ollama models running."""
@@ -181,11 +190,13 @@ async def ollama_ps():
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return res
 
+
 @app.delete("/ollama/delete/{model}")
 async def ollama_delete(model: str):
     """Delete Ollama model."""
     try:
-        res = requests.delete(f"{OLLAMA_HOST}/api/delete", json={"name": model})
+        res = requests.delete(
+            f"{OLLAMA_HOST}/api/delete", json={"name": model})
         res.raise_for_status()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

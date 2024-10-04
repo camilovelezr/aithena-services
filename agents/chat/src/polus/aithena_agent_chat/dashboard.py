@@ -38,6 +38,12 @@ If you ask a question, always include a question mark.
 Do not introduce yourself to user if user does not ask for it.
 Never explain to user how your answers are.
 """
+PROMPT_DEFAULT = """
+You are an expert scientific assistant named Aithena.
+Respond to users with knowledgeable, informative, and thoughtful answers.
+Your answer must maintain a conversational tone.
+You are very very detailed and thorough in your responses.
+"""
 
 PROMPT = os.getenv("AITHENA_CHAT_PROMPT", PROMPT_DEFAULT)
 
@@ -164,7 +170,7 @@ def Page():
         logger.info(f"Calling LLM with {MESSAGES.value}")
         response = requests.post(
             get_chat_url(llm_name),
-            params={"stream": True},
+            params={"stream": True, "num_ctx": "128000"},
             json=MESSAGES.value,
             timeout=120,
             stream=True,
