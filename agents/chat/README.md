@@ -1,4 +1,4 @@
-# Aithena Chat Agent
+# Aithena Chat Agent 0.1.0-dev3
 
 A generic chat agent to interact with chat models in the Aithena framework.
 
@@ -20,3 +20,5 @@ Do not introduce yourself to user if user does not ask for it.
 Never explain to user how your answers are.
 """
 ```
+
+* `AITHENA_CHAT_CONTEXT_WINDOW_SIZE` *Optional*: context window in tokens. Default is 2048. This is used as the initial/default value of the input box.

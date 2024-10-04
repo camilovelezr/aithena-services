@@ -1,4 +1,4 @@
-# aithena-services
+# aithena-services 0.1.0-dev2
 
 For information on how to set up your environment, [see here](/docs/env.md).
 

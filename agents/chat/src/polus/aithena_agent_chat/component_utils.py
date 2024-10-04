@@ -21,6 +21,8 @@ def ModelRow(
     set_reset_value,
     messages,
     set_edit_mode_value,
+    context_window,
+    set_context
 ):
     with solara.Row(
         style={
@@ -48,23 +50,10 @@ def ModelRow(
                 messages,
             ),
         )
-        solara.Switch(
-            label="Reset on Change",
-            value=False,
-            on_value=set_reset_value,
-            style={
-                "position": "relative",
-                "top": "-8px",
-            },
-        )
-        solara.Switch(
-            label="Edit Mode",
-            value=False,
-            on_value=set_edit_mode_value,
-            style={
-                "position": "relative",
-                "top": "-8px",
-            },
+        solara.InputInt(
+            label="Context Window",
+            value=context_window,
+            on_value=set_context,
         )
 
 
@@ -240,7 +229,8 @@ def ModelLabel(
                     "width": "fit-content",
                 }
             ):
-                ModelButton(index, model, task, model_labels, set_model_labels, is_last)
+                ModelButton(index, model, task, model_labels,
+                            set_model_labels, is_last)
                 rv.Btn(
                     children=[
                         rv.Icon(

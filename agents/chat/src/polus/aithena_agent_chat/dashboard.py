@@ -27,17 +27,17 @@ logger.info(f"Started Aithena Chat Agent with API URL: {API_URL}")
 
 FILE_PATH = Path(__file__).parent.absolute()
 
-PROMPT_DEFAULT = """
-You are a helpful assistant named Aithena.
-Respond to users with witty, entertaining, and thoughtful answers.
-User wants short answers, maximum five sentences.
-If user asks info about yourself or your architecture,
-respond with info about your LLM model and its capabilities.
-Do not finish every sentence with a question.
-If you ask a question, always include a question mark.
-Do not introduce yourself to user if user does not ask for it.
-Never explain to user how your answers are.
-"""
+# PROMPT_DEFAULT = """
+# You are a helpful assistant named Aithena.
+# Respond to users with witty, entertaining, and thoughtful answers.
+# User wants short answers, maximum five sentences.
+# If user asks info about yourself or your architecture,
+# respond with info about your LLM model and its capabilities.
+# Do not finish every sentence with a question.
+# If you ask a question, always include a question mark.
+# Do not introduce yourself to user if user does not ask for it.
+# Never explain to user how your answers are.
+# """
 PROMPT_DEFAULT = """
 You are an expert scientific assistant named Aithena.
 Respond to users with knowledgeable, informative, and thoughtful answers.
@@ -142,6 +142,8 @@ LLMS_AVAILABLE = requests.get(f"{CHAT_URL}list", timeout=10).json()
 DEFAULT_LLM = os.getenv("AITHENA_CHAT_DEFAULT_MODEL", "")
 DEFAULT_LLM = DEFAULT_LLM if DEFAULT_LLM in LLMS_AVAILABLE else ""
 
+CONTEXT_WINDOW_SIZE = os.getenv("AITHENA_CHAT_CONTEXT_WINDOW_SIZE", "2048")
+
 
 @ solara.component
 def Page():
@@ -157,6 +159,8 @@ def Page():
 
     edit_mode, set_edit_mode = solara.use_state(False)
 
+    context_window, set_context = solara.use_state(int(CONTEXT_WINDOW_SIZE))
+
     user_message_count = len(
         [m for m in MESSAGES.value if m["role"] == "user"])
 
@@ -170,7 +174,7 @@ def Page():
         logger.info(f"Calling LLM with {MESSAGES.value}")
         response = requests.post(
             get_chat_url(llm_name),
-            params={"stream": True, "num_ctx": "128000"},
+            params={"stream": True, "num_ctx": context_window},
             json=MESSAGES.value,
             timeout=120,
             stream=True,
@@ -211,6 +215,8 @@ def Page():
             set_reset_on_change,
             MESSAGES.set,
             set_edit_mode,
+            context_window,
+            set_context,
         )
         with solara.lab.ChatBox():
             for index, item in enumerate(MESSAGES.value):

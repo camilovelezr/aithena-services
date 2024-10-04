@@ -1,4 +1,4 @@
 #!/bin/bash
 
 version=$(<docker/VERSION)
-docker build -t aithena-services:${version} -f docker/Dockerfile .
+docker build --platform linux/amd64,linux/arm64 -t aithena-services:${version} -f docker/Dockerfile .
